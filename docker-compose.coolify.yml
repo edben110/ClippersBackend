@@ -1,0 +1,66 @@
+# Docker Compose para Despliegue en Coolify
+# Usa este archivo para configurar el despliegue en Coolify
+# Las variables de entorno se configuran directamente en Coolify
+
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: clipers-postgres
+    environment:
+      POSTGRES_DB: clipers_db
+      POSTGRES_USER: clipers_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clipers_user -d clipers_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - clipers-network
+
+  clipers-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: clipers-backend
+    environment:
+      SERVER_PORT: 8080
+      DATABASE_URL: jdbc:postgresql://postgres:5432/clipers_db
+      DATABASE_USERNAME: clipers_user
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      FRONTEND_URL: ${FRONTEND_URL}
+      FILE_UPLOAD_BASE_URL: ${FILE_UPLOAD_BASE_URL}
+      JPA_SHOW_SQL: false
+      LOG_LEVEL_CLIPERS: INFO
+      LOG_LEVEL_SECURITY: WARN
+      # Configuración específica para Coolify
+      spring.jpa.database-platform: org.hibernate.dialect.PostgreSQLDialect
+      spring.jpa.hibernate.ddl-auto: validate
+    ports:
+      - "8080:8080"
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/api/test/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - clipers-network
+
+volumes:
+  postgres_data:
+  uploads_data:
+
+networks:
+  clipers-network:
+    driver: bridge
