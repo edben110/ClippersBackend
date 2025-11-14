@@ -1,16 +1,15 @@
 package com.clipers.clipers.repository;
 
 import com.clipers.clipers.entity.User;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface UserRepository extends JpaRepository<User, String> {
+public interface UserRepository extends MongoRepository<User, String> {
     
     Optional<User> findByEmail(String email);
     
@@ -18,12 +17,13 @@ public interface UserRepository extends JpaRepository<User, String> {
     
     List<User> findByRole(User.Role role);
     
-    @Query("SELECT u FROM User u WHERE u.role = 'CANDIDATE' AND u.atsProfile IS NOT NULL")
+    @Query("{ 'role': 'CANDIDATE', 'atsProfileId': { $ne: null } }")
     List<User> findCandidatesWithATSProfile();
     
-    @Query("SELECT u FROM User u WHERE " +
-           "LOWER(u.firstName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-           "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-           "LOWER(u.email) LIKE LOWER(CONCAT('%', :query, '%'))")
-    List<User> searchUsers(@Param("query") String query);
+    @Query("{ $or: [ " +
+           "{ 'firstName': { $regex: ?0, $options: 'i' } }, " +
+           "{ 'lastName': { $regex: ?0, $options: 'i' } }, " +
+           "{ 'email': { $regex: ?0, $options: 'i' } } " +
+           "] }")
+    List<User> searchUsers(String query);
 }

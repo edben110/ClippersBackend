@@ -46,7 +46,7 @@ public class ATSProfileService {
             throw new IllegalStateException("El usuario ya tiene un perfil ATS");
         }
 
-        ATSProfile profile = new ATSProfile(user)
+        ATSProfile profile = new ATSProfile(user.getId())
                 .withSummary(summary)
                 .withCliper(cliperId);
 
@@ -147,74 +147,104 @@ public class ATSProfileService {
     }
 
     // Education management methods
-    public com.clipers.clipers.entity.Education addEducation(String userId, String institution, String degree, String field) {
+    public com.clipers.clipers.entity.Education addEducation(String userId, String institution, String degree, String field, String startDate, String endDate, String description) {
         ATSProfile profile = atsProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Perfil ATS no encontrado"));
 
-        profile.addEducation(institution, degree, field);
-        atsProfileRepository.save(profile);
-        // Return the last added education
-        return profile.getEducation().get(profile.getEducation().size() - 1);
-    }
-
-    public com.clipers.clipers.entity.Education updateEducation(String userId, String educationId, String institution, String degree, String field) {
-        ATSProfile profile = atsProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Perfil ATS no encontrado"));
-
-        com.clipers.clipers.entity.Education education = profile.getEducation().stream()
-                .filter(e -> e.getId().equals(educationId))
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("Educación no encontrada"));
-
+        com.clipers.clipers.entity.Education education = new com.clipers.clipers.entity.Education();
         education.setInstitution(institution);
         education.setDegree(degree);
         education.setField(field);
+        education.setStartDate(startDate);
+        education.setEndDate(endDate);
+        education.setDescription(description);
+        
+        profile.getEducation().add(education);
+        atsProfileRepository.save(profile);
+        
+        return education;
+    }
+
+    public com.clipers.clipers.entity.Education updateEducation(String userId, int educationIndex, String institution, String degree, String field, String startDate, String endDate, String description) {
+        ATSProfile profile = atsProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Perfil ATS no encontrado"));
+
+        if (educationIndex < 0 || educationIndex >= profile.getEducation().size()) {
+            throw new RuntimeException("Índice de educación inválido");
+        }
+
+        com.clipers.clipers.entity.Education education = profile.getEducation().get(educationIndex);
+        if (institution != null) education.setInstitution(institution);
+        if (degree != null) education.setDegree(degree);
+        if (field != null) education.setField(field);
+        if (startDate != null) education.setStartDate(startDate);
+        if (endDate != null) education.setEndDate(endDate);
+        if (description != null) education.setDescription(description);
 
         atsProfileRepository.save(profile);
         return education;
     }
 
-    public void deleteEducation(String userId, String educationId) {
+    public void deleteEducation(String userId, int educationIndex) {
         ATSProfile profile = atsProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Perfil ATS no encontrado"));
 
-        profile.getEducation().removeIf(e -> e.getId().equals(educationId));
+        if (educationIndex < 0 || educationIndex >= profile.getEducation().size()) {
+            throw new RuntimeException("Índice de educación inválido");
+        }
+
+        profile.getEducation().remove(educationIndex);
         atsProfileRepository.save(profile);
     }
 
     // Experience management methods
-    public com.clipers.clipers.entity.Experience addExperience(String userId, String company, String position, String description) {
+    public com.clipers.clipers.entity.Experience addExperience(String userId, String company, String position, String description, String startDate, String endDate, java.util.List<String> skills) {
         ATSProfile profile = atsProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Perfil ATS no encontrado"));
 
-        profile.addExperience(company, position, description);
-        atsProfileRepository.save(profile);
-        // Return the last added experience
-        return profile.getExperience().get(profile.getExperience().size() - 1);
-    }
-
-    public com.clipers.clipers.entity.Experience updateExperience(String userId, String experienceId, String company, String position, String description) {
-        ATSProfile profile = atsProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Perfil ATS no encontrado"));
-
-        com.clipers.clipers.entity.Experience experience = profile.getExperience().stream()
-                .filter(e -> e.getId().equals(experienceId))
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("Experiencia no encontrada"));
-
+        com.clipers.clipers.entity.Experience experience = new com.clipers.clipers.entity.Experience();
         experience.setCompany(company);
         experience.setPosition(position);
         experience.setDescription(description);
+        experience.setStartDate(startDate);
+        experience.setEndDate(endDate);
+        experience.setSkills(skills);
+        
+        profile.getExperience().add(experience);
+        atsProfileRepository.save(profile);
+        
+        return experience;
+    }
+
+    public com.clipers.clipers.entity.Experience updateExperience(String userId, int experienceIndex, String company, String position, String description, String startDate, String endDate, java.util.List<String> skills) {
+        ATSProfile profile = atsProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Perfil ATS no encontrado"));
+
+        if (experienceIndex < 0 || experienceIndex >= profile.getExperience().size()) {
+            throw new RuntimeException("Índice de experiencia inválido");
+        }
+
+        com.clipers.clipers.entity.Experience experience = profile.getExperience().get(experienceIndex);
+        if (company != null) experience.setCompany(company);
+        if (position != null) experience.setPosition(position);
+        if (description != null) experience.setDescription(description);
+        if (startDate != null) experience.setStartDate(startDate);
+        if (endDate != null) experience.setEndDate(endDate);
+        if (skills != null) experience.setSkills(skills);
 
         atsProfileRepository.save(profile);
         return experience;
     }
 
-    public void deleteExperience(String userId, String experienceId) {
+    public void deleteExperience(String userId, int experienceIndex) {
         ATSProfile profile = atsProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Perfil ATS no encontrado"));
 
-        profile.getExperience().removeIf(e -> e.getId().equals(experienceId));
+        if (experienceIndex < 0 || experienceIndex >= profile.getExperience().size()) {
+            throw new RuntimeException("Índice de experiencia inválido");
+        }
+
+        profile.getExperience().remove(experienceIndex);
         atsProfileRepository.save(profile);
     }
 
@@ -229,15 +259,15 @@ public class ATSProfileService {
         return profile.getSkills().get(profile.getSkills().size() - 1);
     }
 
-    public com.clipers.clipers.entity.Skill updateSkill(String userId, String skillId, String name, com.clipers.clipers.entity.Skill.SkillLevel level, com.clipers.clipers.entity.Skill.SkillCategory category) {
+    public com.clipers.clipers.entity.Skill updateSkill(String userId, int skillIndex, String name, com.clipers.clipers.entity.Skill.SkillLevel level, com.clipers.clipers.entity.Skill.SkillCategory category) {
         ATSProfile profile = atsProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Perfil ATS no encontrado"));
 
-        com.clipers.clipers.entity.Skill skill = profile.getSkills().stream()
-                .filter(s -> s.getId().equals(skillId))
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("Habilidad no encontrada"));
+        if (skillIndex < 0 || skillIndex >= profile.getSkills().size()) {
+            throw new RuntimeException("Índice de habilidad inválido");
+        }
 
+        com.clipers.clipers.entity.Skill skill = profile.getSkills().get(skillIndex);
         skill.setName(name);
         skill.setLevel(level);
         skill.setCategory(category);
@@ -246,11 +276,15 @@ public class ATSProfileService {
         return skill;
     }
 
-    public void deleteSkill(String userId, String skillId) {
+    public void deleteSkill(String userId, int skillIndex) {
         ATSProfile profile = atsProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Perfil ATS no encontrado"));
 
-        profile.getSkills().removeIf(s -> s.getId().equals(skillId));
+        if (skillIndex < 0 || skillIndex >= profile.getSkills().size()) {
+            throw new RuntimeException("Índice de habilidad inválido");
+        }
+
+        profile.getSkills().remove(skillIndex);
         atsProfileRepository.save(profile);
     }
 }

@@ -70,14 +70,7 @@ public class CliperService {
         // Step 1: Validate user
         User user = validateAndGetUser(userId);
 
-        // Step 2: Check if user already has a cliper and delete it if exists
-        List<Cliper> existingClipers = cliperRepository.findByUserId(userId);
-        if (!existingClipers.isEmpty()) {
-            // Delete existing cliper(s) to allow creating a new one
-            for (Cliper existingCliper : existingClipers) {
-                cliperRepository.delete(existingCliper);
-            }
-        }
+        // Step 2: Allow multiple clipers per user - no deletion of existing ones
 
         // Step 3: Save video file first
         String savedVideoUrl = null;
@@ -99,7 +92,7 @@ public class CliperService {
          }
 
         // Step 5: Create new cliper with processing results
-        Cliper cliper = new Cliper(title, description, savedVideoUrl != null ? savedVideoUrl : videoUrl, duration, user);
+        Cliper cliper = new Cliper(title, description, savedVideoUrl != null ? savedVideoUrl : videoUrl, duration, user.getId());
 
         // Set processing data if available
         if (processingResponse != null) {
@@ -154,7 +147,7 @@ public class CliperService {
      */
     private void generateOrUpdateATSProfile(Cliper cliper) {
         try {
-            Optional<ATSProfile> existingProfile = atsProfileRepository.findByUserId(cliper.getUser().getId());
+            Optional<ATSProfile> existingProfile = atsProfileRepository.findByUserId(cliper.getUserId());
             
             ATSProfile atsProfile;
             if (existingProfile.isPresent()) {
@@ -163,7 +156,7 @@ public class CliperService {
                 atsProfile.withCliper(cliper.getId());
             } else {
                 // Crear nuevo perfil usando Builder pattern implícito
-                atsProfile = new ATSProfile(cliper.getUser())
+                atsProfile = new ATSProfile(cliper.getUserId())
                         .withCliper(cliper.getId());
             }
             
@@ -191,7 +184,7 @@ public class CliperService {
     }
 
     public Page<Cliper> findProcessedClipers(Pageable pageable) {
-        return cliperRepository.findProcessedClipersOrderByCreatedAtDesc(pageable);
+        return cliperRepository.findByStatusOrderByCreatedAtDesc(Cliper.Status.DONE, pageable);
     }
 
     public Page<Cliper> searchClipers(String query, Pageable pageable) {
@@ -264,7 +257,7 @@ public class CliperService {
                 if (freshCliper.getStatus() == Cliper.Status.DONE) {
                     cliperRepository.save(freshCliper);
                     generateOrUpdateATSProfile(freshCliper);
-                    notificationService.notifyCliperProcessed(freshCliper.getUser().getId(), freshCliper.getId());
+                    notificationService.notifyCliperProcessed(freshCliper.getUserId(), freshCliper.getId());
                 } else {
                     freshCliper.setStatus(Cliper.Status.FAILED);
                     cliperRepository.save(freshCliper);
@@ -493,7 +486,7 @@ public class CliperService {
                 atsProfile.getSkills().clear();
                 atsProfile.getLanguages().clear();
             } else {
-                atsProfile = new ATSProfile(user);
+                atsProfile = new ATSProfile(user.getId());
                 System.out.println("🆕 Creando nuevo perfil ATS");
             }
 
@@ -634,7 +627,7 @@ public class CliperService {
                 atsProfile.getSkills().clear();
                 atsProfile.getLanguages().clear();
             } else {
-                atsProfile = new ATSProfile(user);
+                atsProfile = new ATSProfile(user.getId());
             }
 
             // Generar contenido simulado completo

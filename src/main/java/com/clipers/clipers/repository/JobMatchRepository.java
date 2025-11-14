@@ -3,16 +3,15 @@ package com.clipers.clipers.repository;
 import com.clipers.clipers.entity.JobMatch;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface JobMatchRepository extends JpaRepository<JobMatch, String> {
+public interface JobMatchRepository extends MongoRepository<JobMatch, String> {
     
     List<JobMatch> findByUserId(String userId);
     
@@ -24,12 +23,12 @@ public interface JobMatchRepository extends JpaRepository<JobMatch, String> {
     
     Page<JobMatch> findByJobIdOrderByScoreDesc(String jobId, Pageable pageable);
     
-    @Query("SELECT jm FROM JobMatch jm WHERE jm.user.id = :userId AND jm.score >= :minScore ORDER BY jm.score DESC")
-    List<JobMatch> findHighScoringMatchesForUser(@Param("userId") String userId, @Param("minScore") Double minScore);
+    @Query(value = "{ 'userId': ?0, 'score': { $gte: ?1 } }", sort = "{ 'score': -1 }")
+    List<JobMatch> findHighScoringMatchesForUser(String userId, Double minScore);
     
-    @Query("SELECT jm FROM JobMatch jm WHERE jm.job.id = :jobId AND jm.score >= :minScore ORDER BY jm.score DESC")
-    List<JobMatch> findHighScoringMatchesForJob(@Param("jobId") String jobId, @Param("minScore") Double minScore);
+    @Query(value = "{ 'jobId': ?0, 'score': { $gte: ?1 } }", sort = "{ 'score': -1 }")
+    List<JobMatch> findHighScoringMatchesForJob(String jobId, Double minScore);
     
-    @Query("SELECT AVG(jm.score) FROM JobMatch jm WHERE jm.user.id = :userId")
-    Double getAverageScoreForUser(@Param("userId") String userId);
+    @Query(value = "{ 'userId': ?0 }", fields = "{ 'score': 1 }")
+    List<JobMatch> findScoresByUserId(String userId);
 }

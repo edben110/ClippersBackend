@@ -128,7 +128,7 @@ public class UserService {
         if (user.getRole() == User.Role.COMPANY) {
             Company company = new Company();
             company.setName(request.getCompanyName());
-            company.setUser(user);
+            company.setUserId(user.getId());
             companyRepository.save(company);
         }
     }

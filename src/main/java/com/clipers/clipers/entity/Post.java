@@ -1,58 +1,55 @@
 package com.clipers.clipers.entity;
 
-import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Entity
-@Table(name = "posts")
+@Document(collection = "posts")
 public class Post {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
     @NotBlank
-    @Column(columnDefinition = "TEXT")
     private String content;
 
     private String imageUrl;
 
     private String videoUrl;
 
-    @Enumerated(EnumType.STRING)
     private PostType type = PostType.TEXT;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    private String userId; // Referencia al usuario
+
+    @org.springframework.data.annotation.Transient
+    private User user; // Usuario completo (no se guarda en DB, solo para respuestas)
 
     private Integer likes = 0;
 
-    @CreationTimestamp
+    @CreatedDate
     private LocalDateTime createdAt;
 
-    @UpdateTimestamp
+    @LastModifiedDate
     private LocalDateTime updatedAt;
 
-    // Relationships
-    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Comment> comments;
+    // Relationships - Referencias por ID
+    private List<String> commentIds;
 
-    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<PostLike> postLikes;
+    private List<String> postLikeIds;
 
     // Constructors
     public Post() {}
 
-    public Post(String content, PostType type, User user) {
+    public Post(String content, PostType type, String userId) {
         this.content = content;
         this.type = type;
-        this.user = user;
+        this.userId = userId;
     }
 
     // Getters and Setters
@@ -71,8 +68,8 @@ public class Post {
     public PostType getType() { return type; }
     public void setType(PostType type) { this.type = type; }
 
-    public User getUser() { return user; }
-    public void setUser(User user) { this.user = user; }
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
 
     public Integer getLikes() { return likes; }
     public void setLikes(Integer likes) { this.likes = likes; }
@@ -83,11 +80,14 @@ public class Post {
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
-    public List<Comment> getComments() { return comments; }
-    public void setComments(List<Comment> comments) { this.comments = comments; }
+    public List<String> getCommentIds() { return commentIds; }
+    public void setCommentIds(List<String> commentIds) { this.commentIds = commentIds; }
 
-    public List<PostLike> getPostLikes() { return postLikes; }
-    public void setPostLikes(List<PostLike> postLikes) { this.postLikes = postLikes; }
+    public List<String> getPostLikeIds() { return postLikeIds; }
+    public void setPostLikeIds(List<String> postLikeIds) { this.postLikeIds = postLikeIds; }
+
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
 
     public enum PostType {
         TEXT, IMAGE, VIDEO, CLIPER

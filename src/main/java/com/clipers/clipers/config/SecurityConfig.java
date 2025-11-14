@@ -58,16 +58,21 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 // Public endpoints
-                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/auth/login").permitAll()
+                .requestMatchers("/api/auth/register").permitAll()
+                .requestMatchers("/api/auth/refresh").permitAll()
+                .requestMatchers("/api/auth/me").authenticated()
                 .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers("/api/test/**").permitAll()
                 .requestMatchers("/api/clipers/public/**").permitAll()
                 .requestMatchers("/api/clipers/admin/clear-all").permitAll() // Temporal para pruebas
                 .requestMatchers("/api/clipers/admin/clear-all-data").permitAll() // Temporal para pruebas
+                .requestMatchers("/api/posts/cleanup-company-videos").permitAll() // Temporal para limpieza
                 .requestMatchers("/api/jobs/public/**").permitAll()
                 .requestMatchers("/api/posts/public/**").permitAll()
                 .requestMatchers("/uploads/videos/**").permitAll()
                 .requestMatchers("/uploads/images/**").permitAll()
+                .requestMatchers("/uploads/avatars/**").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers("/error").permitAll()
                 .requestMatchers("/").permitAll()

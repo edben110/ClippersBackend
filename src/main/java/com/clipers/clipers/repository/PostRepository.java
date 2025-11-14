@@ -3,15 +3,14 @@ package com.clipers.clipers.repository;
 import com.clipers.clipers.entity.Post;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
 @Repository
-public interface PostRepository extends JpaRepository<Post, String> {
+public interface PostRepository extends MongoRepository<Post, String> {
     
     List<Post> findByUserId(String userId);
     
@@ -21,13 +20,10 @@ public interface PostRepository extends JpaRepository<Post, String> {
     
     List<Post> findByType(Post.PostType type);
     
-    @Query("SELECT p FROM Post p WHERE " +
-           "LOWER(p.content) LIKE LOWER(CONCAT('%', :query, '%'))")
-    Page<Post> searchPosts(@Param("query") String query, Pageable pageable);
+    @Query("{ 'content': { $regex: ?0, $options: 'i' } }")
+    Page<Post> searchPosts(String query, Pageable pageable);
     
-    @Query("SELECT p FROM Post p ORDER BY p.likes DESC, p.createdAt DESC")
-    Page<Post> findPostsOrderByPopularity(Pageable pageable);
+    Page<Post> findAllByOrderByLikesDescCreatedAtDesc(Pageable pageable);
     
-    @Query("SELECT COUNT(p) FROM Post p WHERE p.user.id = :userId")
-    Long countPostsByUserId(@Param("userId") String userId);
+    Long countByUserId(String userId);
 }

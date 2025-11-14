@@ -1,5 +1,6 @@
 package com.clipers.clipers.dto;
 
+import com.clipers.clipers.entity.Company;
 import com.clipers.clipers.entity.Job;
 
 import java.time.LocalDateTime;
@@ -35,8 +36,12 @@ public class JobDTO {
         this.isActive = job.getIsActive();
         this.createdAt = job.getCreatedAt();
         this.updatedAt = job.getUpdatedAt();
-        if (job.getCompany() != null) {
-            this.company = new CompanyDTO(job.getCompany());
+    }
+
+    public JobDTO(Job job, Company company) {
+        this(job);
+        if (company != null) {
+            this.company = new CompanyDTO(company);
         }
     }
 

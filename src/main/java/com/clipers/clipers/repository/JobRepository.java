@@ -3,15 +3,14 @@ package com.clipers.clipers.repository;
 import com.clipers.clipers.entity.Job;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
 @Repository
-public interface JobRepository extends JpaRepository<Job, String> {
+public interface JobRepository extends MongoRepository<Job, String> {
     
     List<Job> findByCompanyId(String companyId);
     
@@ -25,29 +24,18 @@ public interface JobRepository extends JpaRepository<Job, String> {
     
     List<Job> findByLocation(String location);
     
-    @Query("SELECT j FROM Job j WHERE j.isActive = true AND " +
-           "(LOWER(j.title) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-           "LOWER(j.description) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-           "LOWER(j.company.name) LIKE LOWER(CONCAT('%', :query, '%')))")
-    Page<Job> searchActiveJobs(@Param("query") String query, Pageable pageable);
+    @Query("{ 'isActive': true, $or: [ " +
+           "{ 'title': { $regex: ?0, $options: 'i' } }, " +
+           "{ 'description': { $regex: ?0, $options: 'i' } } " +
+           "] }")
+    Page<Job> searchActiveJobs(String query, Pageable pageable);
     
-    @Query("SELECT j FROM Job j JOIN j.skills s WHERE " +
-           "j.isActive = true AND LOWER(s) LIKE LOWER(CONCAT('%', :skill, '%'))")
-    List<Job> findActiveJobsBySkill(@Param("skill") String skill);
+    @Query("{ 'isActive': true, 'skills': { $regex: ?0, $options: 'i' } }")
+    List<Job> findActiveJobsBySkill(String skill);
     
-    @Query("SELECT j FROM Job j WHERE j.isActive = true AND " +
-           "j.type = :type AND " +
-           "(:location IS NULL OR LOWER(j.location) LIKE LOWER(CONCAT('%', :location, '%'))) AND " +
-           "(:minSalary IS NULL OR j.salaryMin >= :minSalary) AND " +
-           "(:maxSalary IS NULL OR j.salaryMax <= :maxSalary)")
-    Page<Job> findJobsWithFilters(
-        @Param("type") Job.JobType type,
-        @Param("location") String location,
-        @Param("minSalary") Integer minSalary,
-        @Param("maxSalary") Integer maxSalary,
-        Pageable pageable
-    );
+    @Query("{ 'isActive': true, 'type': ?0, 'location': { $regex: ?1, $options: 'i' }, 'salaryMin': { $gte: ?2 }, 'salaryMax': { $lte: ?3 } }")
+    Page<Job> findJobsWithFilters(Job.JobType type, String location, Integer minSalary, Integer maxSalary, Pageable pageable);
     
-    @Query("SELECT DISTINCT j.location FROM Job j WHERE j.isActive = true AND j.location IS NOT NULL")
-    List<String> findAllActiveJobLocations();
+    @Query(value = "{ 'isActive': true, 'location': { $ne: null } }", fields = "{ 'location': 1 }")
+    List<Job> findAllActiveJobLocations();
 }
