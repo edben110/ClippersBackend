@@ -1,16 +1,25 @@
 package com.clipers.clipers.controller;
 
-import com.clipers.clipers.entity.ATSProfile;
-import com.clipers.clipers.repository.UserRepository;
-import com.clipers.clipers.service.ATSProfileService;
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
+import com.clipers.clipers.entity.ATSProfile;
+import com.clipers.clipers.repository.UserRepository;
+import com.clipers.clipers.service.ATSProfileService;
 
 /**
  * Controlador para gestión de perfiles ATS
@@ -30,7 +39,7 @@ public class ProfileController {
     }
 
     @GetMapping("/me")
-    @PreAuthorize("hasRole('CANDIDATE')")
+    @PreAuthorize("hasRole('CANDIDATE') and !hasRole('COMPANY') and !hasRole('ADMIN')")
     public ResponseEntity<ATSProfile> getATSProfile() {
         try {
             String userId = getCurrentUserId();
@@ -80,14 +89,19 @@ public class ProfileController {
     // Education endpoints
     @PostMapping("/education")
     @PreAuthorize("hasRole('CANDIDATE')")
-    public ResponseEntity<com.clipers.clipers.entity.Education> addEducation(@RequestBody Map<String, String> request) {
+    public ResponseEntity<com.clipers.clipers.entity.Education> addEducation(@RequestBody com.clipers.clipers.dto.EducationRequest educationData) {
         try {
             String userId = getCurrentUserId();
-            String institution = request.get("institution");
-            String degree = request.get("degree");
-            String field = request.get("field");
-
-            com.clipers.clipers.entity.Education education = atsProfileService.addEducation(userId, institution, degree, field);
+            
+            com.clipers.clipers.entity.Education education = atsProfileService.addEducation(
+                userId, 
+                educationData.getInstitution(), 
+                educationData.getDegree(), 
+                educationData.getField(),
+                educationData.getStartDate(),
+                educationData.getEndDate(),
+                educationData.getDescription()
+            );
             return ResponseEntity.ok(education);
         } catch (Exception e) {
             throw new RuntimeException("Error al agregar educación: " + e.getMessage(), e);
@@ -96,14 +110,20 @@ public class ProfileController {
 
     @PutMapping("/education/{id}")
     @PreAuthorize("hasRole('CANDIDATE')")
-    public ResponseEntity<com.clipers.clipers.entity.Education> updateEducation(@PathVariable String id, @RequestBody Map<String, String> request) {
+    public ResponseEntity<com.clipers.clipers.entity.Education> updateEducation(@PathVariable String id, @RequestBody com.clipers.clipers.dto.EducationRequest educationData) {
         try {
             String userId = getCurrentUserId();
-            String institution = request.get("institution");
-            String degree = request.get("degree");
-            String field = request.get("field");
-
-            com.clipers.clipers.entity.Education education = atsProfileService.updateEducation(userId, id, institution, degree, field);
+            com.clipers.clipers.entity.Education education = atsProfileService.updateEducation(
+                userId, 
+                Integer.parseInt(id), 
+                educationData.getInstitution(), 
+                educationData.getDegree(), 
+                educationData.getField(),
+                educationData.getStartDate(),
+                educationData.getEndDate(),
+                educationData.getDescription()
+            );
+            
             return ResponseEntity.ok(education);
         } catch (Exception e) {
             throw new RuntimeException("Error al actualizar educación: " + e.getMessage(), e);
@@ -115,7 +135,7 @@ public class ProfileController {
     public ResponseEntity<Void> deleteEducation(@PathVariable String id) {
         try {
             String userId = getCurrentUserId();
-            atsProfileService.deleteEducation(userId, id);
+            atsProfileService.deleteEducation(userId, Integer.parseInt(id));
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             throw new RuntimeException("Error al eliminar educación: " + e.getMessage(), e);
@@ -125,14 +145,19 @@ public class ProfileController {
     // Experience endpoints
     @PostMapping("/experience")
     @PreAuthorize("hasRole('CANDIDATE')")
-    public ResponseEntity<com.clipers.clipers.entity.Experience> addExperience(@RequestBody Map<String, String> request) {
+    public ResponseEntity<com.clipers.clipers.entity.Experience> addExperience(@RequestBody com.clipers.clipers.dto.ExperienceRequest experienceData) {
         try {
             String userId = getCurrentUserId();
-            String company = request.get("company");
-            String position = request.get("position");
-            String description = request.get("description");
-
-            com.clipers.clipers.entity.Experience experience = atsProfileService.addExperience(userId, company, position, description);
+            
+            com.clipers.clipers.entity.Experience experience = atsProfileService.addExperience(
+                userId, 
+                experienceData.getCompany(), 
+                experienceData.getPosition(), 
+                experienceData.getDescription(),
+                experienceData.getStartDate(),
+                experienceData.getEndDate(),
+                experienceData.getSkills()
+            );
             return ResponseEntity.ok(experience);
         } catch (Exception e) {
             throw new RuntimeException("Error al agregar experiencia: " + e.getMessage(), e);
@@ -141,14 +166,20 @@ public class ProfileController {
 
     @PutMapping("/experience/{id}")
     @PreAuthorize("hasRole('CANDIDATE')")
-    public ResponseEntity<com.clipers.clipers.entity.Experience> updateExperience(@PathVariable String id, @RequestBody Map<String, String> request) {
+    public ResponseEntity<com.clipers.clipers.entity.Experience> updateExperience(@PathVariable String id, @RequestBody com.clipers.clipers.dto.ExperienceRequest experienceData) {
         try {
             String userId = getCurrentUserId();
-            String company = request.get("company");
-            String position = request.get("position");
-            String description = request.get("description");
-
-            com.clipers.clipers.entity.Experience experience = atsProfileService.updateExperience(userId, id, company, position, description);
+            com.clipers.clipers.entity.Experience experience = atsProfileService.updateExperience(
+                userId, 
+                Integer.parseInt(id), 
+                experienceData.getCompany(), 
+                experienceData.getPosition(), 
+                experienceData.getDescription(),
+                experienceData.getStartDate(),
+                experienceData.getEndDate(),
+                experienceData.getSkills()
+            );
+            
             return ResponseEntity.ok(experience);
         } catch (Exception e) {
             throw new RuntimeException("Error al actualizar experiencia: " + e.getMessage(), e);
@@ -160,7 +191,7 @@ public class ProfileController {
     public ResponseEntity<Void> deleteExperience(@PathVariable String id) {
         try {
             String userId = getCurrentUserId();
-            atsProfileService.deleteExperience(userId, id);
+            atsProfileService.deleteExperience(userId, Integer.parseInt(id));
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             throw new RuntimeException("Error al eliminar experiencia: " + e.getMessage(), e);
@@ -199,7 +230,7 @@ public class ProfileController {
             com.clipers.clipers.entity.Skill.SkillLevel skillLevel = com.clipers.clipers.entity.Skill.SkillLevel.valueOf(level.toUpperCase());
             com.clipers.clipers.entity.Skill.SkillCategory skillCategory = com.clipers.clipers.entity.Skill.SkillCategory.valueOf(category.toUpperCase());
 
-            com.clipers.clipers.entity.Skill skill = atsProfileService.updateSkill(userId, id, name, skillLevel, skillCategory);
+            com.clipers.clipers.entity.Skill skill = atsProfileService.updateSkill(userId, Integer.parseInt(id), name, skillLevel, skillCategory);
             return ResponseEntity.ok(skill);
         } catch (Exception e) {
             throw new RuntimeException("Error al actualizar habilidad: " + e.getMessage(), e);
@@ -211,7 +242,7 @@ public class ProfileController {
     public ResponseEntity<Void> deleteSkill(@PathVariable String id) {
         try {
             String userId = getCurrentUserId();
-            atsProfileService.deleteSkill(userId, id);
+            atsProfileService.deleteSkill(userId, Integer.parseInt(id));
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             throw new RuntimeException("Error al eliminar habilidad: " + e.getMessage(), e);

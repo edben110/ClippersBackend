@@ -13,6 +13,14 @@ public class CompanyDTO {
     private String website;
     private String logo;
     private String location;
+    private Integer foundedYear;
+    private String mission;
+    private String vision;
+    private java.util.List<String> benefits;
+    private java.util.List<String> values;
+    private String culture;
+    private Integer employeeCount;
+    private java.util.List<String> socialMedia;
     private String userId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -28,7 +36,15 @@ public class CompanyDTO {
         this.website = company.getWebsite();
         this.logo = company.getLogo();
         this.location = company.getLocation();
-        this.userId = company.getUser().getId();
+        this.foundedYear = company.getFoundedYear();
+        this.mission = company.getMission();
+        this.vision = company.getVision();
+        this.benefits = company.getBenefits();
+        this.values = company.getValues();
+        this.culture = company.getCulture();
+        this.employeeCount = company.getEmployeeCount();
+        this.socialMedia = company.getSocialMedia();
+        this.userId = company.getUserId();
         this.createdAt = company.getCreatedAt();
         this.updatedAt = company.getUpdatedAt();
     }
@@ -66,4 +82,28 @@ public class CompanyDTO {
 
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public Integer getFoundedYear() { return foundedYear; }
+    public void setFoundedYear(Integer foundedYear) { this.foundedYear = foundedYear; }
+
+    public String getMission() { return mission; }
+    public void setMission(String mission) { this.mission = mission; }
+
+    public String getVision() { return vision; }
+    public void setVision(String vision) { this.vision = vision; }
+
+    public java.util.List<String> getBenefits() { return benefits; }
+    public void setBenefits(java.util.List<String> benefits) { this.benefits = benefits; }
+
+    public java.util.List<String> getValues() { return values; }
+    public void setValues(java.util.List<String> values) { this.values = values; }
+
+    public String getCulture() { return culture; }
+    public void setCulture(String culture) { this.culture = culture; }
+
+    public Integer getEmployeeCount() { return employeeCount; }
+    public void setEmployeeCount(Integer employeeCount) { this.employeeCount = employeeCount; }
+
+    public java.util.List<String> getSocialMedia() { return socialMedia; }
+    public void setSocialMedia(java.util.List<String> socialMedia) { this.socialMedia = socialMedia; }
 }

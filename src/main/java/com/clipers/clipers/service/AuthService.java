@@ -158,16 +158,7 @@ public class AuthService {
     }
 
     private UserDTO convertToDTO(User user) {
-        return new UserDTO(
-                user.getId(),
-                user.getEmail(),
-                user.getFirstName(),
-                user.getLastName(),
-                user.getRole(),
-                user.getProfileImage(),
-                user.getCreatedAt(),
-                user.getUpdatedAt()
-        );
+        return new UserDTO(user);
     }
 
     // Value Object para encapsular el par de tokens

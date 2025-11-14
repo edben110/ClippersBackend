@@ -1,71 +1,59 @@
 package com.clipers.clipers.entity;
 
-import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Entity
-@Table(name = "jobs")
+@Document(collection = "jobs")
 public class Job {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
     @NotBlank
     private String title;
 
-    @Column(columnDefinition = "TEXT")
     private String description;
 
-    @ElementCollection
-    @CollectionTable(name = "job_requirements", joinColumns = @JoinColumn(name = "job_id"))
-    @Column(name = "requirement")
     private List<String> requirements;
 
-    @ElementCollection
-    @CollectionTable(name = "job_skills", joinColumns = @JoinColumn(name = "job_id"))
-    @Column(name = "skill")
     private List<String> skills;
 
     private String location;
 
-    @Enumerated(EnumType.STRING)
     private JobType type;
 
     private Integer salaryMin;
 
     private Integer salaryMax;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "company_id", nullable = false)
-    private Company company;
+    private String companyId; // Referencia a la compañía
 
     private Boolean isActive = true;
 
-    @CreationTimestamp
+    @CreatedDate
     private LocalDateTime createdAt;
 
-    @UpdateTimestamp
+    @LastModifiedDate
     private LocalDateTime updatedAt;
 
     // Relationships
-    @OneToMany(mappedBy = "job", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<JobMatch> jobMatches;
+    private List<String> jobMatchIds;
 
     // Constructors
     public Job() {}
 
-    public Job(String title, String description, String location, JobType type, Company company) {
+    public Job(String title, String description, String location, JobType type, String companyId) {
         this.title = title;
         this.description = description;
         this.location = location;
         this.type = type;
-        this.company = company;
+        this.companyId = companyId;
     }
 
     // Getters and Setters
@@ -96,8 +84,8 @@ public class Job {
     public Integer getSalaryMax() { return salaryMax; }
     public void setSalaryMax(Integer salaryMax) { this.salaryMax = salaryMax; }
 
-    public Company getCompany() { return company; }
-    public void setCompany(Company company) { this.company = company; }
+    public String getCompanyId() { return companyId; }
+    public void setCompanyId(String companyId) { this.companyId = companyId; }
 
     public Boolean getIsActive() { return isActive; }
     public void setIsActive(Boolean isActive) { this.isActive = isActive; }
@@ -108,8 +96,8 @@ public class Job {
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
-    public List<JobMatch> getJobMatches() { return jobMatches; }
-    public void setJobMatches(List<JobMatch> jobMatches) { this.jobMatches = jobMatches; }
+    public List<String> getJobMatchIds() { return jobMatchIds; }
+    public void setJobMatchIds(List<String> jobMatchIds) { this.jobMatchIds = jobMatchIds; }
 
     public enum JobType {
         FULL_TIME, PART_TIME, CONTRACT, INTERNSHIP

@@ -35,12 +35,8 @@ public class CliperDTO {
         this.skills = cliper.getSkills();
         this.createdAt = cliper.getCreatedAt();
         this.updatedAt = cliper.getUpdatedAt();
-
-        // Set user if available (lazy loaded)
-        if (cliper.getUser() != null) {
-            this.userId = cliper.getUser().getId();
-            this.user = new UserDTO(cliper.getUser());
-        }
+        this.userId = cliper.getUserId();
+        // Note: user object should be populated by service layer if needed
     }
 
     // Getters and Setters

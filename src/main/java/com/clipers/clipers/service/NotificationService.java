@@ -1,11 +1,12 @@
 package com.clipers.clipers.service;
 
-import com.clipers.clipers.entity.User;
-import org.springframework.stereotype.Service;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.springframework.stereotype.Service;
+
+import com.clipers.clipers.entity.User;
 
 /**
  * Servicio que implementa Observer Pattern implícitamente
@@ -81,6 +82,34 @@ public class NotificationService {
         notifyAllHandlers(event);
     }
 
+    public void notifyJobApplication(String jobId, String applicantId) {
+        NotificationEvent event = new NotificationEvent(
+            NotificationEvent.EventType.JOB_APPLICATION,
+            null, // La empresa será notificada a través del job
+            applicantId,
+            jobId,
+            "Nueva aplicación recibida para tu oferta laboral"
+        );
+        notifyAllHandlers(event);
+    }
+
+    public void notifyApplicationStatusUpdate(String candidateId, String jobId, com.clipers.clipers.entity.JobMatch.ApplicationStatus status) {
+        String message = switch (status) {
+            case ACCEPTED -> "¡Felicitaciones! Tu aplicación ha sido aceptada.";
+            case REJECTED -> "Tu aplicación ha sido rechazada.";
+            case PENDING -> "El estado de tu aplicación ha cambiado.";
+        };
+
+        NotificationEvent event = new NotificationEvent(
+            NotificationEvent.EventType.APPLICATION_STATUS_UPDATE,
+            candidateId,
+            null,
+            jobId,
+            message
+        );
+        notifyAllHandlers(event);
+    }
+
     private void notifyAllHandlers(NotificationEvent event) {
         for (NotificationHandler handler : handlers) {
             try {
@@ -139,7 +168,7 @@ public class NotificationService {
     // Clase interna para eventos de notificación
     public static class NotificationEvent {
         public enum EventType {
-            USER_REGISTERED, POST_LIKED, POST_COMMENTED, JOB_MATCHED, CLIPER_PROCESSED
+            USER_REGISTERED, POST_LIKED, POST_COMMENTED, JOB_MATCHED, CLIPER_PROCESSED, JOB_APPLICATION, APPLICATION_STATUS_UPDATE
         }
         
         private final EventType type;

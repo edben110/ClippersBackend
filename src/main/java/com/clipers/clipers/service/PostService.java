@@ -49,10 +49,10 @@ public class PostService {
      */
     public Post createPost(String userId, String content, String imageUrl, String videoUrl, Post.PostType type) {
         // Step 1: Validate user
-        User user = validateAndGetUser(userId);
+        validateAndGetUser(userId);
         
         // Step 2: Create post
-        Post post = new Post(content, type, user);
+        Post post = new Post(content, type, userId);
         post.setImageUrl(imageUrl);
         post.setVideoUrl(videoUrl);
         
@@ -77,7 +77,7 @@ public class PostService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Publicación no encontrada"));
         
-        User user = validateAndGetUser(userId);
+        validateAndGetUser(userId);
         
         Optional<PostLike> existingLike = postLikeRepository.findByUserIdAndPostId(userId, postId);
         
@@ -87,13 +87,13 @@ public class PostService {
             post.setLikes(post.getLikes() - 1);
         } else {
             // Add like
-            PostLike like = new PostLike(user, post);
+            PostLike like = new PostLike(userId, postId);
             postLikeRepository.save(like);
             post.setLikes(post.getLikes() + 1);
             
             // Notify post owner (Observer pattern implícito)
-            if (!post.getUser().getId().equals(userId)) {
-                notificationService.notifyPostLiked(post.getUser().getId(), userId, postId);
+            if (!post.getUserId().equals(userId)) {
+                notificationService.notifyPostLiked(post.getUserId(), userId, postId);
             }
         }
         
@@ -107,17 +107,22 @@ public class PostService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Publicación no encontrada"));
         
-        User user = validateAndGetUser(userId);
+        validateAndGetUser(userId);
         
-        Comment comment = new Comment(content, user, post);
-        comment = commentRepository.save(comment);
+        Comment comment = new Comment(content, userId, postId);
+        Comment savedComment = commentRepository.save(comment);
+        
+        // Populate user information
+        userRepository.findById(savedComment.getUserId()).ifPresent(user -> {
+            savedComment.setUser(user);
+        });
         
         // Notify post owner (Observer pattern implícito)
-        if (!post.getUser().getId().equals(userId)) {
-            notificationService.notifyPostCommented(post.getUser().getId(), userId, postId, content);
+        if (!post.getUserId().equals(userId)) {
+            notificationService.notifyPostCommented(post.getUserId(), userId, postId, content);
         }
         
-        return comment;
+        return savedComment;
     }
 
     public Optional<Post> findById(String id) {
@@ -125,7 +130,14 @@ public class PostService {
     }
 
     public Page<Post> getFeed(Pageable pageable) {
-        return postRepository.findAllByOrderByCreatedAtDesc(pageable);
+        Page<Post> posts = postRepository.findAllByOrderByCreatedAtDesc(pageable);
+        // Populate user information for each post
+        posts.forEach(post -> {
+            userRepository.findById(post.getUserId()).ifPresent(user -> {
+                post.setUser(user);
+            });
+        });
+        return posts;
     }
 
     public List<Post> findByUserId(String userId) {
@@ -133,7 +145,60 @@ public class PostService {
     }
 
     public List<Comment> getComments(String postId) {
-        return commentRepository.findByPostId(postId);
+        List<Comment> comments = commentRepository.findByPostId(postId);
+        // Populate user information for each comment
+        comments.forEach(comment -> {
+            userRepository.findById(comment.getUserId()).ifPresent(user -> {
+                comment.setUser(user);
+            });
+        });
+        return comments;
+    }
+
+    public Comment updateComment(String postId, String commentId, String userId, String content) {
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new RuntimeException("Comentario no encontrado"));
+        
+        // Verify the comment belongs to the post
+        if (!comment.getPostId().equals(postId)) {
+            throw new RuntimeException("El comentario no pertenece a esta publicación");
+        }
+        
+        // Verify the user owns the comment
+        if (!comment.getUserId().equals(userId)) {
+            throw new RuntimeException("No tienes permiso para editar este comentario");
+        }
+        
+        comment.setContent(content);
+        Comment savedComment = commentRepository.save(comment);
+        
+        // Populate user information
+        userRepository.findById(savedComment.getUserId()).ifPresent(user -> {
+            savedComment.setUser(user);
+        });
+        
+        return savedComment;
+    }
+
+    public void deleteComment(String postId, String commentId, String userId) {
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new RuntimeException("Comentario no encontrado"));
+        
+        // Verify the comment belongs to the post
+        if (!comment.getPostId().equals(postId)) {
+            throw new RuntimeException("El comentario no pertenece a esta publicación");
+        }
+        
+        // Get the post to check if user is the post owner
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Publicación no encontrada"));
+        
+        // Verify the user owns the comment OR owns the post
+        if (!comment.getUserId().equals(userId) && !post.getUserId().equals(userId)) {
+            throw new RuntimeException("No tienes permiso para eliminar este comentario");
+        }
+        
+        commentRepository.delete(comment);
     }
 
     public Page<Post> searchPosts(String query, Pageable pageable) {
@@ -152,6 +217,44 @@ public class PostService {
         if (!postRepository.existsById(id)) {
             throw new RuntimeException("Publicación no encontrada");
         }
+        
+        // Delete all comments associated with this post
+        List<Comment> comments = commentRepository.findByPostId(id);
+        commentRepository.deleteAll(comments);
+        
+        // Delete all likes associated with this post
+        List<PostLike> likes = postLikeRepository.findByPostId(id);
+        postLikeRepository.deleteAll(likes);
+        
+        // Delete the post
         postRepository.deleteById(id);
+    }
+
+    public int deleteVideoPostsByCompanies() {
+        // Find all posts of type VIDEO or CLIPER
+        List<Post> videoPosts = postRepository.findByType(Post.PostType.VIDEO);
+        List<Post> cliperPosts = postRepository.findByType(Post.PostType.CLIPER);
+        
+        int deletedCount = 0;
+        
+        // Check each video post and delete if created by a company
+        for (Post post : videoPosts) {
+            Optional<User> userOpt = userRepository.findById(post.getUserId());
+            if (userOpt.isPresent() && User.Role.COMPANY.equals(userOpt.get().getRole())) {
+                deletePost(post.getId());
+                deletedCount++;
+            }
+        }
+        
+        // Check each cliper post and delete if created by a company
+        for (Post post : cliperPosts) {
+            Optional<User> userOpt = userRepository.findById(post.getUserId());
+            if (userOpt.isPresent() && User.Role.COMPANY.equals(userOpt.get().getRole())) {
+                deletePost(post.getId());
+                deletedCount++;
+            }
+        }
+        
+        return deletedCount;
     }
 }

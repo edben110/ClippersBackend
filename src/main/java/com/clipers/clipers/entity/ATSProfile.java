@@ -1,8 +1,9 @@
 package com.clipers.clipers.entity;
 
-import jakarta.persistence.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -12,47 +13,38 @@ import java.util.List;
  * Entidad ATSProfile que implementa Builder Pattern implícitamente
  * para la construcción de perfiles complejos paso a paso
  */
-@Entity
-@Table(name = "ats_profiles")
+@Document(collection = "ats_profiles")
 public class ATSProfile {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @Column(columnDefinition = "TEXT")
     private String summary;
 
-    @OneToOne
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    private String userId;
 
     private String cliperId;
 
-    @CreationTimestamp
+    @CreatedDate
     private LocalDateTime createdAt;
 
-    @UpdateTimestamp
+    @LastModifiedDate
     private LocalDateTime updatedAt;
 
-    // Relationships
-    @OneToMany(mappedBy = "atsProfile", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    // Embedded documents
     private List<Education> education = new ArrayList<>();
 
-    @OneToMany(mappedBy = "atsProfile", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Experience> experience = new ArrayList<>();
 
-    @OneToMany(mappedBy = "atsProfile", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Skill> skills = new ArrayList<>();
 
-    @OneToMany(mappedBy = "atsProfile", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Language> languages = new ArrayList<>();
 
     // Constructors
     public ATSProfile() {}
 
-    public ATSProfile(User user) {
-        this.user = user;
+    public ATSProfile(String userId) {
+        this.userId = userId;
     }
 
     // Builder Pattern implementado implícitamente como métodos fluidos
@@ -71,7 +63,6 @@ public class ATSProfile {
         education.setInstitution(institution);
         education.setDegree(degree);
         education.setField(field);
-        education.setAtsProfile(this);
         this.education.add(education);
         return this;
     }
@@ -81,7 +72,6 @@ public class ATSProfile {
         experience.setCompany(company);
         experience.setPosition(position);
         experience.setDescription(description);
-        experience.setAtsProfile(this);
         this.experience.add(experience);
         return this;
     }
@@ -91,7 +81,6 @@ public class ATSProfile {
         skill.setName(name);
         skill.setLevel(level);
         skill.setCategory(category);
-        skill.setAtsProfile(this);
         this.skills.add(skill);
         return this;
     }
@@ -100,7 +89,6 @@ public class ATSProfile {
         Language language = new Language();
         language.setName(name);
         language.setLevel(level);
-        language.setAtsProfile(this);
         this.languages.add(language);
         return this;
     }
@@ -163,8 +151,8 @@ public class ATSProfile {
     public String getSummary() { return summary; }
     public void setSummary(String summary) { this.summary = summary; }
 
-    public User getUser() { return user; }
-    public void setUser(User user) { this.user = user; }
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
 
     public String getCliperId() { return cliperId; }
     public void setCliperId(String cliperId) { this.cliperId = cliperId; }

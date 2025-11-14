@@ -1,10 +1,11 @@
 package com.clipers.clipers.entity;
 
-import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -15,18 +16,15 @@ import java.util.List;
  * Entidad Cliper que implementa Chain of Responsibility implícitamente
  * para el procesamiento de video -> audio -> transcripción -> NLP
  */
-@Entity
-@Table(name = "clipers")
+@Document(collection = "clipers")
 public class Cliper {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
     @NotBlank
     private String title;
 
-    @Column(columnDefinition = "TEXT")
     private String description;
 
     @NotBlank
@@ -37,36 +35,29 @@ public class Cliper {
     @NotNull
     private Integer duration; // in seconds
 
-    @Enumerated(EnumType.STRING)
     private Status status = Status.UPLOADED;
 
-    @Column(columnDefinition = "TEXT")
     private String transcription;
 
-    @ElementCollection
-    @CollectionTable(name = "cliper_skills", joinColumns = @JoinColumn(name = "cliper_id"))
-    @Column(name = "skill")
     private List<String> skills = new ArrayList<>();
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    private String userId; // Referencia al usuario
 
-    @CreationTimestamp
+    @CreatedDate
     private LocalDateTime createdAt;
 
-    @UpdateTimestamp
+    @LastModifiedDate
     private LocalDateTime updatedAt;
 
     // Constructors
     public Cliper() {}
 
-    public Cliper(String title, String description, String videoUrl, Integer duration, User user) {
+    public Cliper(String title, String description, String videoUrl, Integer duration, String userId) {
         this.title = title;
         this.description = description;
         this.videoUrl = videoUrl;
         this.duration = duration;
-        this.user = user;
+        this.userId = userId;
     }
 
     // Chain of Responsibility implementado implícitamente
@@ -137,8 +128,7 @@ public class Cliper {
 
     private String generateMockTranscription() {
         // En producción, esto vendría del servicio de transcripción
-        return "Hola, soy " + this.user.getFirstName() + " " + this.user.getLastName() + 
-               ". Tengo experiencia en desarrollo de software, especialmente en Java y Spring Boot. " +
+        return "Hola, soy un profesional con experiencia en desarrollo de software, especialmente en Java y Spring Boot. " +
                "Me considero una persona proactiva, con buenas habilidades de comunicación y trabajo en equipo. " +
                "Estoy buscando nuevas oportunidades para crecer profesionalmente.";
     }
@@ -194,7 +184,7 @@ public class Cliper {
 
     // State Pattern implícito para manejo de estados
     public boolean canBeEdited() {
-        return this.status == Status.UPLOADED || this.status == Status.FAILED;
+        return this.status == Status.UPLOADED || this.status == Status.FAILED || this.status == Status.DONE;
     }
 
     public boolean isProcessingComplete() {
@@ -233,8 +223,8 @@ public class Cliper {
     public List<String> getSkills() { return skills; }
     public void setSkills(List<String> skills) { this.skills = skills; }
 
-    public User getUser() { return user; }
-    public void setUser(User user) { this.user = user; }
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

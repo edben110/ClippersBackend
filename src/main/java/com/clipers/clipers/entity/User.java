@@ -1,12 +1,15 @@
 package com.clipers.clipers.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
@@ -16,17 +19,15 @@ import java.util.List;
  * Entidad User que implementa Factory Method implícitamente
  * para la creación de diferentes tipos de usuarios
  */
-@Entity
-@Table(name = "users")
+@Document(collection = "users")
 public class User {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
     @Email
     @NotBlank
-    @Column(unique = true)
+    @Indexed(unique = true)
     private String email;
 
     @NotBlank
@@ -39,34 +40,32 @@ public class User {
     @NotBlank
     private String lastName;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     private Role role = Role.CANDIDATE;
 
     private String profileImage;
 
-    @CreationTimestamp
+    private String phone;
+
+    private String address;
+
+    @CreatedDate
     private LocalDateTime createdAt;
 
-    @UpdateTimestamp
+    @LastModifiedDate
     private LocalDateTime updatedAt;
 
-    // Relationships
+    // Relationships - MongoDB usa referencias por ID en lugar de objetos completos
     @JsonIgnore
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Cliper> clipers;
+    private List<String> cliperIds;
 
     @JsonIgnore
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Post> posts;
+    private List<String> postIds;
 
     @JsonIgnore
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private Company company;
+    private String companyId;
 
     @JsonIgnore
-    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private ATSProfile atsProfile;
+    private String atsProfileId;
 
     // Constructors
     public User() {}
@@ -161,17 +160,23 @@ public class User {
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
-    public List<Cliper> getClipers() { return clipers; }
-    public void setClipers(List<Cliper> clipers) { this.clipers = clipers; }
+    public List<String> getCliperIds() { return cliperIds; }
+    public void setCliperIds(List<String> cliperIds) { this.cliperIds = cliperIds; }
 
-    public List<Post> getPosts() { return posts; }
-    public void setPosts(List<Post> posts) { this.posts = posts; }
+    public List<String> getPostIds() { return postIds; }
+    public void setPostIds(List<String> postIds) { this.postIds = postIds; }
 
-    public Company getCompany() { return company; }
-    public void setCompany(Company company) { this.company = company; }
+    public String getCompanyId() { return companyId; }
+    public void setCompanyId(String companyId) { this.companyId = companyId; }
 
-    public ATSProfile getAtsProfile() { return atsProfile; }
-    public void setAtsProfile(ATSProfile atsProfile) { this.atsProfile = atsProfile; }
+    public String getAtsProfileId() { return atsProfileId; }
+    public void setAtsProfileId(String atsProfileId) { this.atsProfileId = atsProfileId; }
+
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
+
+    public String getAddress() { return address; }
+    public void setAddress(String address) { this.address = address; }
 
     public enum Role {
         CANDIDATE, COMPANY, ADMIN

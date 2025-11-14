@@ -1,25 +1,34 @@
 package com.clipers.clipers.controller;
 
-import com.clipers.clipers.dto.UserDTO;
-import com.clipers.clipers.dto.JobDTO;
-import com.clipers.clipers.entity.Job;
-import com.clipers.clipers.entity.JobMatch;
-import com.clipers.clipers.service.AuthService;
-import com.clipers.clipers.service.JobService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.data.domain.PageRequest;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.clipers.clipers.dto.JobDTO;
+import com.clipers.clipers.dto.UserDTO;
+import com.clipers.clipers.entity.Job;
+import com.clipers.clipers.entity.JobMatch;
+import com.clipers.clipers.service.AuthService;
+import com.clipers.clipers.service.JobService;
+import com.clipers.clipers.service.NotificationService;
 
 @RestController
 @RequestMapping("/api/jobs")
@@ -28,11 +37,13 @@ public class JobController {
 
     private final JobService jobService;
     private final AuthService authService;
+    private final NotificationService notificationService;
 
     @Autowired
-    public JobController(JobService jobService, AuthService authService) {
+    public JobController(JobService jobService, AuthService authService, NotificationService notificationService) {
         this.jobService = jobService;
         this.authService = authService;
+        this.notificationService = notificationService;
     }
 
     @PostMapping
@@ -111,9 +122,7 @@ public class JobController {
         Pageable pageable = PageRequest.of(page, size);
         Page<Job> jobsPage = jobService.findActiveJobs(pageable);
 
-        List<JobDTO> jobDTOs = jobsPage.getContent().stream()
-                .map(JobDTO::new)
-                .collect(Collectors.toList());
+        List<JobDTO> jobDTOs = jobService.convertJobsToDTO(jobsPage.getContent());
 
         Map<String, Object> response = new HashMap<>();
         response.put("jobs", jobDTOs);
@@ -219,13 +228,15 @@ public class JobController {
     }
 
     @PostMapping("/{jobId}/apply")
-    public ResponseEntity<Void> applyToJob(@PathVariable String jobId) {
+    public ResponseEntity<com.clipers.clipers.dto.JobApplicationDTO> applyToJob(@PathVariable String jobId, @RequestBody(required = false) Map<String, String> request) {
         try {
             String userId = getCurrentUserId();
-            // En producción, aquí se crearía una aplicación al trabajo
-            // Por ahora solo simulamos
-            System.out.println("Usuario " + userId + " aplicó al trabajo " + jobId);
-            return ResponseEntity.ok().build();
+            String applicationMessage = request != null ? request.get("message") : null;
+
+            JobMatch application = jobService.applyToJob(jobId, userId, applicationMessage);
+            List<com.clipers.clipers.dto.JobApplicationDTO> dtos = jobService.convertApplicationsToDTO(List.of(application));
+            
+            return ResponseEntity.ok(dtos.get(0));
         } catch (Exception e) {
             throw new RuntimeException("Error al aplicar al trabajo: " + e.getMessage(), e);
         }
@@ -235,6 +246,70 @@ public class JobController {
     public ResponseEntity<List<String>> getJobLocations() {
         List<String> locations = jobService.getAllJobLocations();
         return ResponseEntity.ok(locations);
+    }
+
+    @PostMapping("/populate-sample-jobs")
+    @PreAuthorize("hasRole('COMPANY')")
+    public ResponseEntity<Map<String, Object>> populateSampleJobs() {
+        try {
+            String companyUserId = getCurrentUserId();
+            int createdCount = jobService.populateSampleJobs(companyUserId);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Empleos de ejemplo creados correctamente");
+            response.put("createdCount", createdCount);
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            throw new RuntimeException("Error al crear empleos de ejemplo: " + e.getMessage(), e);
+        }
+    }
+
+    // Endpoints para gestión de aplicaciones
+
+    @GetMapping("/my-applications")
+    @PreAuthorize("hasRole('CANDIDATE')")
+    public ResponseEntity<List<com.clipers.clipers.dto.JobApplicationDTO>> getMyApplications() {
+        try {
+            String userId = getCurrentUserId();
+            List<JobMatch> applications = jobService.getUserApplications(userId);
+            List<com.clipers.clipers.dto.JobApplicationDTO> applicationDTOs = jobService.convertApplicationsToDTO(applications);
+            return ResponseEntity.ok(applicationDTOs);
+        } catch (Exception e) {
+            throw new RuntimeException("Error al obtener tus aplicaciones: " + e.getMessage(), e);
+        }
+    }
+
+    @PutMapping("/applications/{applicationId}/status")
+    @PreAuthorize("hasRole('COMPANY')")
+    public ResponseEntity<com.clipers.clipers.dto.JobApplicationDTO> updateApplicationStatus(
+            @PathVariable String applicationId,
+            @RequestBody Map<String, String> request) {
+        try {
+            String companyUserId = getCurrentUserId();
+            String statusStr = request.get("status");
+            JobMatch.ApplicationStatus status = JobMatch.ApplicationStatus.valueOf(statusStr.toUpperCase());
+
+            JobMatch updatedApplication = jobService.updateApplicationStatus(applicationId, status, companyUserId);
+            List<com.clipers.clipers.dto.JobApplicationDTO> dtos = jobService.convertApplicationsToDTO(List.of(updatedApplication));
+            
+            return ResponseEntity.ok(dtos.get(0));
+        } catch (Exception e) {
+            throw new RuntimeException("Error al actualizar estado de aplicación: " + e.getMessage(), e);
+        }
+    }
+
+    @GetMapping("/{jobId}/applications")
+    @PreAuthorize("hasRole('COMPANY')")
+    public ResponseEntity<List<com.clipers.clipers.dto.JobApplicationDTO>> getJobApplications(@PathVariable String jobId) {
+        try {
+            String companyUserId = getCurrentUserId();
+            List<JobMatch> applications = jobService.getJobApplications(jobId, companyUserId);
+            List<com.clipers.clipers.dto.JobApplicationDTO> applicationDTOs = jobService.convertApplicationsToDTO(applications);
+            return ResponseEntity.ok(applicationDTOs);
+        } catch (Exception e) {
+            throw new RuntimeException("Error al obtener aplicaciones del trabajo: " + e.getMessage(), e);
+        }
     }
 
     private String getCurrentUserId() {

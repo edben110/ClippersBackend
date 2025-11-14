@@ -12,6 +12,8 @@ public class UserDTO {
     private String lastName;
     private User.Role role;
     private String profileImage;
+    private String phone;
+    private String address;
     
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdAt;
@@ -29,6 +31,8 @@ public class UserDTO {
         this.lastName = user.getLastName();
         this.role = user.getRole();
         this.profileImage = user.getProfileImage();
+        this.phone = user.getPhone();
+        this.address = user.getAddress();
         this.createdAt = user.getCreatedAt();
         this.updatedAt = user.getUpdatedAt();
     }
@@ -63,6 +67,12 @@ public class UserDTO {
 
     public String getProfileImage() { return profileImage; }
     public void setProfileImage(String profileImage) { this.profileImage = profileImage; }
+
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
+
+    public String getAddress() { return address; }
+    public void setAddress(String address) { this.address = address; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

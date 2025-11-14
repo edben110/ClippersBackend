@@ -1,48 +1,44 @@
 package com.clipers.clipers.entity;
 
-import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import org.hibernate.annotations.CreationTimestamp;
-
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Entity
-@Table(name = "job_matches")
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import jakarta.validation.constraints.NotNull;
+
+@Document(collection = "job_matches")
 public class JobMatch {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "job_id", nullable = false)
-    private Job job;
+    private String jobId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    private String userId;
 
     @NotNull
     private Double score; // 0.0 to 1.0
 
-    @Column(columnDefinition = "TEXT")
     private String explanation;
 
-    @ElementCollection
-    @CollectionTable(name = "job_match_skills", joinColumns = @JoinColumn(name = "job_match_id"))
-    @Column(name = "matched_skill")
     private List<String> matchedSkills;
 
-    @CreationTimestamp
+    private ApplicationStatus status = ApplicationStatus.PENDING;
+
+    @CreatedDate
     private LocalDateTime createdAt;
+
+    private String applicationMessage;
 
     // Constructors
     public JobMatch() {}
 
-    public JobMatch(Job job, User user, Double score, String explanation) {
-        this.job = job;
-        this.user = user;
+    public JobMatch(String jobId, String userId, Double score, String explanation) {
+        this.jobId = jobId;
+        this.userId = userId;
         this.score = score;
         this.explanation = explanation;
     }
@@ -51,11 +47,11 @@ public class JobMatch {
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
 
-    public Job getJob() { return job; }
-    public void setJob(Job job) { this.job = job; }
+    public String getJobId() { return jobId; }
+    public void setJobId(String jobId) { this.jobId = jobId; }
 
-    public User getUser() { return user; }
-    public void setUser(User user) { this.user = user; }
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
 
     public Double getScore() { return score; }
     public void setScore(Double score) { this.score = score; }
@@ -68,4 +64,14 @@ public class JobMatch {
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public ApplicationStatus getStatus() { return status; }
+    public void setStatus(ApplicationStatus status) { this.status = status; }
+
+    public String getApplicationMessage() { return applicationMessage; }
+    public void setApplicationMessage(String applicationMessage) { this.applicationMessage = applicationMessage; }
+
+    public enum ApplicationStatus {
+        PENDING, ACCEPTED, REJECTED
+    }
 }
