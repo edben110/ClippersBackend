@@ -26,9 +26,13 @@ import com.clipers.clipers.dto.JobDTO;
 import com.clipers.clipers.dto.UserDTO;
 import com.clipers.clipers.entity.Job;
 import com.clipers.clipers.entity.JobMatch;
+import com.clipers.clipers.repository.CompanyRepository;
 import com.clipers.clipers.service.AuthService;
 import com.clipers.clipers.service.JobService;
 import com.clipers.clipers.service.NotificationService;
+
+import java.util.ArrayList;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/jobs")
@@ -38,12 +42,14 @@ public class JobController {
     private final JobService jobService;
     private final AuthService authService;
     private final NotificationService notificationService;
+    private final CompanyRepository companyRepository;
 
     @Autowired
-    public JobController(JobService jobService, AuthService authService, NotificationService notificationService) {
+    public JobController(JobService jobService, AuthService authService, NotificationService notificationService, CompanyRepository companyRepository) {
         this.jobService = jobService;
         this.authService = authService;
         this.notificationService = notificationService;
+        this.companyRepository = companyRepository;
     }
 
     @PostMapping
@@ -138,6 +144,31 @@ public class JobController {
     public ResponseEntity<List<Job>> getJobsByCompany(@PathVariable String companyId) {
         List<Job> jobs = jobService.findByCompanyId(companyId);
         return ResponseEntity.ok(jobs);
+    }
+
+    @GetMapping("/my-jobs")
+    @PreAuthorize("hasRole('COMPANY')")
+    public ResponseEntity<List<JobDTO>> getMyJobs() {
+        try {
+            String userId = getCurrentUserId();
+            
+            // First, find the company associated with this user
+            Optional<com.clipers.clipers.entity.Company> companyOpt = 
+                companyRepository.findByUserId(userId);
+            
+            if (!companyOpt.isPresent()) {
+                return ResponseEntity.ok(new ArrayList<>());
+            }
+            
+            String companyId = companyOpt.get().getId();
+            
+            // Now find jobs by company ID
+            List<Job> jobs = jobService.findByCompanyId(companyId);
+            List<JobDTO> jobDTOs = jobService.convertJobsToDTO(jobs);
+            return ResponseEntity.ok(jobDTOs);
+        } catch (Exception e) {
+            throw new RuntimeException("Error al obtener tus empleos: " + e.getMessage(), e);
+        }
     }
 
     @GetMapping("/search")
@@ -268,7 +299,7 @@ public class JobController {
     // Endpoints para gestión de aplicaciones
 
     @GetMapping("/my-applications")
-    @PreAuthorize("hasRole('CANDIDATE')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<com.clipers.clipers.dto.JobApplicationDTO>> getMyApplications() {
         try {
             String userId = getCurrentUserId();
