@@ -61,6 +61,8 @@ public class Cliper {
         this.videoUrl = videoUrl;
         this.duration = duration;
         this.userId = userId;
+        this.likedBy = new ArrayList<>();
+        this.comments = new ArrayList<>();
     }
 
 
@@ -115,39 +117,48 @@ public class Cliper {
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
-    public List<String> getLikedBy() { return likedBy; }
-    public void setLikedBy(List<String> likedBy) { this.likedBy = likedBy; }
-
-    public List<Comment> getComments() { return comments; }
-    public void setComments(List<Comment> comments) { this.comments = comments; }
-
-    public int getLikesCount() { return likedBy != null ? likedBy.size() : 0; }
-    public int getCommentsCount() { return comments != null ? comments.size() : 0; }
-
-    public boolean isLikedBy(String userId) {
-        return likedBy != null && likedBy.contains(userId);
-    }
-
-    public void addLike(String userId) {
+    public List<String> getLikedBy() { 
         if (likedBy == null) {
             likedBy = new ArrayList<>();
         }
-        if (!likedBy.contains(userId)) {
-            likedBy.add(userId);
+        return likedBy; 
+    }
+    
+    public void setLikedBy(List<String> likedBy) { this.likedBy = likedBy; }
+
+    public List<Comment> getComments() { 
+        if (comments == null) {
+            comments = new ArrayList<>();
+        }
+        return comments; 
+    }
+    
+    public void setComments(List<Comment> comments) { this.comments = comments; }
+
+    public int getLikesCount() { 
+        return getLikedBy().size(); 
+    }
+    
+    public int getCommentsCount() { 
+        return getComments().size(); 
+    }
+
+    public boolean isLikedBy(String userId) {
+        return getLikedBy().contains(userId);
+    }
+
+    public void addLike(String userId) {
+        if (!getLikedBy().contains(userId)) {
+            getLikedBy().add(userId);
         }
     }
 
     public void removeLike(String userId) {
-        if (likedBy != null) {
-            likedBy.remove(userId);
-        }
+        getLikedBy().remove(userId);
     }
 
     public void addComment(Comment comment) {
-        if (comments == null) {
-            comments = new ArrayList<>();
-        }
-        comments.add(comment);
+        getComments().add(comment);
     }
 
     public enum Status {

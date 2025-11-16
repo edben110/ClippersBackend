@@ -3,6 +3,7 @@ package com.clipers.clipers.controller;
 import com.clipers.clipers.entity.Cliper;
 import com.clipers.clipers.service.CliperService;
 import com.clipers.clipers.dto.CliperDTO;
+import com.clipers.clipers.dto.UserDTO;
 import com.clipers.clipers.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -151,7 +152,19 @@ public class CliperController {
         Page<Cliper> clipersPage = cliperService.findProcessedClipers(pageable);
 
         List<CliperDTO> cliperDTOs = clipersPage.getContent().stream()
-                .map(CliperDTO::new)
+                .map(cliper -> {
+                    CliperDTO dto = new CliperDTO(cliper);
+                    // Enrich with user info
+                    userRepository.findById(cliper.getUserId()).ifPresent(user -> {
+                        UserDTO userDTO = new UserDTO();
+                        userDTO.setId(user.getId());
+                        userDTO.setFirstName(user.getFirstName());
+                        userDTO.setLastName(user.getLastName());
+                        userDTO.setEmail(user.getEmail());
+                        dto.setUser(userDTO);
+                    });
+                    return dto;
+                })
                 .toList();
 
         Map<String, Object> response = new HashMap<>();
@@ -173,7 +186,19 @@ public class CliperController {
         Page<Cliper> clipersPage = cliperService.findProcessedClipers(pageable);
 
         List<CliperDTO> cliperDTOs = clipersPage.getContent().stream()
-                .map(CliperDTO::new)
+                .map(cliper -> {
+                    CliperDTO dto = new CliperDTO(cliper);
+                    // Enrich with user info
+                    userRepository.findById(cliper.getUserId()).ifPresent(user -> {
+                        UserDTO userDTO = new UserDTO();
+                        userDTO.setId(user.getId());
+                        userDTO.setFirstName(user.getFirstName());
+                        userDTO.setLastName(user.getLastName());
+                        userDTO.setEmail(user.getEmail());
+                        dto.setUser(userDTO);
+                    });
+                    return dto;
+                })
                 .toList();
 
         Map<String, Object> response = new HashMap<>();

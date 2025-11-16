@@ -182,6 +182,13 @@ public class CliperService {
         return cliperRepository.findByStatusOrderByCreatedAtDesc(Cliper.Status.DONE, pageable);
     }
 
+    /**
+     * Enrich cliper with user information
+     */
+    public void enrichCliperWithUser(Cliper cliper) {
+        // This is handled in the controller by creating a CliperDTO with user info
+    }
+
     public Page<Cliper> searchClipers(String query, Pageable pageable) {
         return cliperRepository.searchClipers(query, pageable);
     }
@@ -574,13 +581,23 @@ public class CliperService {
         Cliper cliper = cliperRepository.findById(cliperId)
                 .orElseThrow(() -> new RuntimeException("Cliper not found"));
         
+        System.out.println("🔄 Toggle like - Cliper: " + cliperId + ", User: " + userId);
+        System.out.println("📊 Before - Likes: " + cliper.getLikesCount() + ", Liked by user: " + cliper.isLikedBy(userId));
+        
         if (cliper.isLikedBy(userId)) {
             cliper.removeLike(userId);
+            System.out.println("❌ Removed like");
         } else {
             cliper.addLike(userId);
+            System.out.println("✅ Added like");
         }
         
-        return cliperRepository.save(cliper);
+        System.out.println("📊 After - Likes: " + cliper.getLikesCount());
+        
+        Cliper saved = cliperRepository.save(cliper);
+        System.out.println("💾 Saved to DB - Likes: " + saved.getLikesCount());
+        
+        return saved;
     }
 
     /**
@@ -590,10 +607,18 @@ public class CliperService {
         Cliper cliper = cliperRepository.findById(cliperId)
                 .orElseThrow(() -> new RuntimeException("Cliper not found"));
         
+        System.out.println("💬 Adding comment - Cliper: " + cliperId + ", User: " + userName);
+        System.out.println("📊 Before - Comments: " + cliper.getCommentsCount());
+        
         Cliper.Comment comment = new Cliper.Comment(userId, userName, text);
         cliper.addComment(comment);
         
-        return cliperRepository.save(cliper);
+        System.out.println("📊 After - Comments: " + cliper.getCommentsCount());
+        
+        Cliper saved = cliperRepository.save(cliper);
+        System.out.println("💾 Saved to DB - Comments: " + saved.getCommentsCount());
+        
+        return saved;
     }
 
     /**
