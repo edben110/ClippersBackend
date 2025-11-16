@@ -42,7 +42,7 @@ public class CliperService {
     private final NotificationService notificationService;
     private final RestTemplate restTemplate;
 
-    @Value("${video.processing.service.url:https://micoservicioprocesarvideo.onrender.com/upload-video}")
+    @Value("${video.processing.service.url:https://video.clipers.pro/upload-video}")
     private String videoProcessingServiceUrl;
 
     @Value("${file.upload.base.url:http://localhost:8080}")
@@ -62,113 +62,108 @@ public class CliperService {
     }
 
     /**
-     * Template Method implementado implícitamente
-     * Define el flujo de creación y procesamiento de Clipers
-     * Ahora procesa síncronamente antes de guardar para rellenar ATS automáticamente
+     * Template Method implemented implicitly
+     * Defines the flow for creating and processing Clipers
+     * IMPROVEMENT: One cliper per user - automatically replaces previous one
+     * IMPROVEMENT: Doesn't create simulated data if microservice fails
      */
     public Cliper createCliper(String userId, String title, String description, String videoUrl, Integer duration, org.springframework.web.multipart.MultipartFile videoFile) {
         // Step 1: Validate user
         User user = validateAndGetUser(userId);
 
-        // Step 2: Allow multiple clipers per user - no deletion of existing ones
-
-        // Step 3: Save video file first
-        String savedVideoUrl = null;
-        java.nio.file.Path savedFilePath = null;
-        if (videoFile != null) {
-            savedVideoUrl = saveVideoFile(videoFile);
-            savedFilePath = java.nio.file.Paths.get("./uploads/videos", savedVideoUrl.substring(savedVideoUrl.lastIndexOf('/') + 1));
-        }
-
-        // Step 4: Process video synchronously before saving cliper
-        VideoProcessingResponse processingResponse = null;
-        if (savedFilePath != null) {
-            processingResponse = callVideoProcessingService(savedFilePath);
-        }
-
-         // If microservice fails, create simulated data based on expected JSON format
-         if (processingResponse == null) {
-             processingResponse = createSimulatedVideoProcessingResponse();
-         }
-
-        // Step 5: Create new cliper with processing results
-        Cliper cliper = new Cliper(title, description, savedVideoUrl != null ? savedVideoUrl : videoUrl, duration, user.getId());
-
-        // Set processing data if available
-        if (processingResponse != null) {
-            cliper.setTranscription(processingResponse.getTranscription());
-            cliper.setStatus(Cliper.Status.DONE);
-
-            // Extract skills from profile if available
-            if (processingResponse.getProfile() != null) {
-                List<String> skills = extractSkillsFromProfile(processingResponse.getProfile());
-                // Note: Cliper entity might need skills field, for now we'll store in transcription
+        // Step 2: Check if user already has a cliper and delete it
+        List<Cliper> existingClipers = cliperRepository.findByUserId(userId);
+        if (!existingClipers.isEmpty()) {
+            System.out.println("User already has " + existingClipers.size() + " cliper(s). Deleting...");
+            for (Cliper existingCliper : existingClipers) {
+                deleteCliperAndVideo(existingCliper);
             }
-        } else {
-            // Simulated processing
-            cliper.setTranscription("Procesamiento simulado completado");
-            cliper.setStatus(Cliper.Status.DONE);
         }
 
-        // Step 6: Save cliper
+        // Step 3: Validate video duration (only if real duration is provided)
+        // Currently commented because we use simulated duration
+        // TODO: Uncomment when we implement real duration extraction with FFmpeg
+        /*
+        if (duration != null && (duration < 15 || duration > 120)) {
+            throw new IllegalArgumentException("Video must be between 15 seconds and 2 minutes");
+        }
+        */
+
+        // Step 4: Save video file first
+        String videoUrlSaved = null;
+        java.nio.file.Path videoFilePath = null;
+        if (videoFile != null) {
+            videoUrlSaved = saveVideoFile(videoFile);
+            videoFilePath = java.nio.file.Paths.get("./uploads/videos", videoUrlSaved.substring(videoUrlSaved.lastIndexOf('/') + 1));
+        }
+
+        // Step 5: Process video synchronously before saving cliper
+        VideoProcessingResponse response = null;
+        if (videoFilePath != null) {
+            response = callVideoProcessingService(videoFilePath);
+        }
+
+        // If microservice fails, mark as FAILED and don't create fake data
+        if (response == null || response.getProfile() == null) {
+            // Delete saved video if processing failed
+            if (videoFilePath != null) {
+                try {
+                    java.nio.file.Files.deleteIfExists(videoFilePath);
+                } catch (Exception e) {
+                    System.err.println("Error deleting video after failure: " + e.getMessage());
+                }
+            }
+            
+            throw new RuntimeException(
+                "Could not process video. Processing service is not available. " +
+                "Please try again later."
+            );
+        }
+
+        // Step 6: Create new cliper with processing results
+        Cliper cliper = new Cliper(title, description, videoUrlSaved != null ? videoUrlSaved : videoUrl, duration, user.getId());
+
+        // Set processing data
+        cliper.setTranscription(response.getTranscription());
+        cliper.setStatus(Cliper.Status.DONE);
+
+        // Extract skills from profile if available
+        if (response.getProfile() != null) {
+            List<String> skills = extractSkillsFromProfile(response.getProfile());
+            cliper.setSkills(skills);
+        }
+
+        // Step 7: Save cliper
         cliper = cliperRepository.save(cliper);
 
-        // Step 4: Always create/update ATS profile with microservice data (regenerate each time)
-         if (processingResponse != null && processingResponse.getProfile() != null) {
-             // Use microservice data to create/update ATS profile (always regenerate)
-             generateOrUpdateATSProfileFromMicroservice(user, processingResponse.getProfile(), processingResponse.getTranscription(), cliper.getId());
-         } else {
-             // If no microservice data, update cliper ID if profile exists
-             updateATSProfileWithCliperId(user.getId(), cliper.getId());
-         }
+        // Step 8: Create/update ATS profile with microservice data
+        generateOrUpdateATSProfileFromMicroservice(
+            user, 
+            response.getProfile(), 
+            response.getTranscription(), 
+            cliper.getId()
+        );
 
-        // Step 7: Send notification
+        // Step 9: Send notification
         notificationService.notifyCliperProcessed(user.getId(), cliper.getId());
 
         return cliper;
     }
 
     private User validateAndGetUser(String userId) {
-        // userId es el ID real del usuario
+        // userId is the real user ID
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
         if (user.getRole() != User.Role.CANDIDATE) {
-            throw new IllegalArgumentException("Solo los candidatos pueden crear Clipers");
+            throw new IllegalArgumentException("Only candidates can create Clipers");
         }
 
         return user;
     }
 
 
-    /**
-     * Builder Pattern implícito para generar perfil ATS
-     * Utiliza el patrón builder implementado en ATSProfile
-     */
-    private void generateOrUpdateATSProfile(Cliper cliper) {
-        try {
-            Optional<ATSProfile> existingProfile = atsProfileRepository.findByUserId(cliper.getUserId());
-            
-            ATSProfile atsProfile;
-            if (existingProfile.isPresent()) {
-                // Actualizar perfil existente
-                atsProfile = existingProfile.get();
-                atsProfile.withCliper(cliper.getId());
-            } else {
-                // Crear nuevo perfil usando Builder pattern implícito
-                atsProfile = new ATSProfile(cliper.getUserId())
-                        .withCliper(cliper.getId());
-            }
-            
-            // Generar contenido del perfil desde el cliper procesado
-            atsProfile.generateFromCliperData(cliper.getTranscription(), cliper.getSkills());
-            
-            atsProfileRepository.save(atsProfile);
-            
-        } catch (Exception e) {
-            System.err.println("Error generando perfil ATS para cliper " + cliper.getId() + ": " + e.getMessage());
-        }
-    }
+
 
     // Métodos CRUD estándar
     public Optional<Cliper> findById(String id) {
@@ -197,11 +192,11 @@ public class CliperService {
 
     public Cliper updateCliper(String id, String title, String description) {
         Cliper cliper = cliperRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Cliper no encontrado"));
+                .orElseThrow(() -> new RuntimeException("Cliper not found"));
 
-        // State Pattern implícito - verificar si puede ser editado
+        // State Pattern implicit - check if it can be edited
         if (!cliper.canBeEdited()) {
-            throw new IllegalStateException("El Cliper no puede ser editado en su estado actual: " + cliper.getStatus());
+            throw new IllegalStateException("Cliper cannot be edited in its current state: " + cliper.getStatus());
         }
 
         cliper.setTitle(title);
@@ -212,11 +207,11 @@ public class CliperService {
 
     public void deleteCliper(String id) {
         Cliper cliper = cliperRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Cliper no encontrado"));
+                .orElseThrow(() -> new RuntimeException("Cliper not found"));
 
-        // State Pattern implícito - verificar si puede ser eliminado
+        // State Pattern implicit - check if it can be deleted
         if (!cliper.canBeEdited()) {
-            throw new IllegalStateException("El Cliper no puede ser eliminado en su estado actual: " + cliper.getStatus());
+            throw new IllegalStateException("Cliper cannot be deleted in its current state: " + cliper.getStatus());
         }
 
         cliperRepository.deleteById(id);
@@ -227,58 +222,57 @@ public class CliperService {
     }
 
     /**
-     * Command Pattern implícito - reintenta el procesamiento de un Cliper fallido
+     * Command Pattern implicit - retries processing of a failed Cliper
      */
     public void retryProcessing(String cliperId) {
         Cliper cliper = cliperRepository.findById(cliperId)
-                .orElseThrow(() -> new RuntimeException("Cliper no encontrado"));
+                .orElseThrow(() -> new RuntimeException("Cliper not found"));
 
         if (!cliper.hasProcessingFailed()) {
-            throw new IllegalStateException("Solo se puede reintentar el procesamiento de Clipers fallidos");
+            throw new IllegalStateException("Can only retry processing of failed Clipers");
         }
 
-        // Resetear estado y reiniciar procesamiento con simulación (no tenemos el archivo original)
+        // Reset state and restart processing with simulation (we don't have original file)
         cliper.setStatus(Cliper.Status.UPLOADED);
         cliper = cliperRepository.save(cliper);
 
-        // Para retry, usamos procesamiento simulado ya que no tenemos el archivo original
+        // For retry, use simulated processing since we don't have the original file
         new Thread(() -> {
             try {
                 Thread.sleep(100);
-                Cliper freshCliper = cliperRepository.findById(cliperId)
-                    .orElseThrow(() -> new RuntimeException("Cliper no encontrado: " + cliperId));
+                Cliper cliperToRetry = cliperRepository.findById(cliperId)
+                    .orElseThrow(() -> new RuntimeException("Cliper not found: " + cliperId));
 
-                freshCliper.setStatus(Cliper.Status.PROCESSING);
-                cliperRepository.save(freshCliper);
+                cliperToRetry.setStatus(Cliper.Status.PROCESSING);
+                cliperRepository.save(cliperToRetry);
 
-                System.out.println("Reintentando procesamiento simulado para cliper: " + freshCliper.getId());
-                freshCliper.processVideo();
+                System.out.println("Retrying simulated processing for cliper: " + cliperToRetry.getId());
+                cliperToRetry.processVideo();
 
-                if (freshCliper.getStatus() == Cliper.Status.DONE) {
-                    cliperRepository.save(freshCliper);
-                    generateOrUpdateATSProfile(freshCliper);
-                    notificationService.notifyCliperProcessed(freshCliper.getUserId(), freshCliper.getId());
+                if (cliperToRetry.getStatus() == Cliper.Status.DONE) {
+                    cliperRepository.save(cliperToRetry);
+                    notificationService.notifyCliperProcessed(cliperToRetry.getUserId(), cliperToRetry.getId());
                 } else {
-                    freshCliper.setStatus(Cliper.Status.FAILED);
-                    cliperRepository.save(freshCliper);
+                    cliperToRetry.setStatus(Cliper.Status.FAILED);
+                    cliperRepository.save(cliperToRetry);
                 }
 
             } catch (Exception e) {
-                System.err.println("Error reintentando procesamiento para cliper " + cliperId + ": " + e.getMessage());
+                System.err.println("Error retrying processing for cliper " + cliperId + ": " + e.getMessage());
             }
         }).start();
     }
 
     /**
-     * Llama al microservicio externo para procesar el video
+     * Calls external microservice to process video
      */
     private VideoProcessingResponse callVideoProcessingService(java.nio.file.Path filePath) {
         try {
-            System.out.println("=== LLAMANDO AL MICROSERVICIO ===");
+            System.out.println("=== CALLING MICROSERVICE ===");
             System.out.println("URL: " + videoProcessingServiceUrl);
-            System.out.println("Archivo: " + filePath.toString());
-            System.out.println("Archivo existe: " + java.nio.file.Files.exists(filePath));
-            System.out.println("Tamaño del archivo: " + (java.nio.file.Files.exists(filePath) ? java.nio.file.Files.size(filePath) : "N/A"));
+            System.out.println("File: " + filePath.toString());
+            System.out.println("File exists: " + java.nio.file.Files.exists(filePath));
+            System.out.println("File size: " + (java.nio.file.Files.exists(filePath) ? java.nio.file.Files.size(filePath) : "N/A"));
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
@@ -288,546 +282,307 @@ public class CliperService {
 
             HttpEntity<MultiValueMap<String, Object>> entity = new HttpEntity<>(body, headers);
 
-            System.out.println("Enviando petición al microservicio...");
+            System.out.println("Sending request to microservice...");
             ResponseEntity<VideoProcessingResponse> response = restTemplate.postForEntity(
                 videoProcessingServiceUrl,
                 entity,
                 VideoProcessingResponse.class
             );
 
-            System.out.println("=== RESPUESTA DEL MICROSERVICIO ===");
+            System.out.println("=== MICROSERVICE RESPONSE ===");
             System.out.println("Status: " + response.getStatusCode());
             VideoProcessingResponse responseBody = response.getBody();
             System.out.println("Body: " + responseBody);
 
             if (responseBody != null) {
-                System.out.println("📝 Transcripción: " + responseBody.getTranscription());
+                System.out.println("📝 Transcription: " + responseBody.getTranscription());
                 if (responseBody.getProfile() != null) {
-                    System.out.println("👤 Nombre: " + responseBody.getProfile().getName());
-                    System.out.println("💼 Profesión: " + responseBody.getProfile().getProfession());
-                    System.out.println("📚 Experiencia: " + responseBody.getProfile().getExperience());
-                    System.out.println("🎓 Educación: " + responseBody.getProfile().getEducation());
-                    System.out.println("🛠️ Tecnologías: " + responseBody.getProfile().getTechnologies());
-                    System.out.println("🌐 Idiomas: " + responseBody.getProfile().getLanguages());
-                    System.out.println("🏆 Logros: " + responseBody.getProfile().getAchievements());
-                    System.out.println("🤝 Habilidades blandas: " + responseBody.getProfile().getSoftSkills());
+                    System.out.println("👤 Name: " + responseBody.getProfile().getName());
+                    System.out.println("💼 Profession: " + responseBody.getProfile().getProfession());
+                    System.out.println("📚 Experience: " + responseBody.getProfile().getExperience());
+                    System.out.println("🎓 Education: " + responseBody.getProfile().getEducation());
+                    System.out.println("🛠️ Technologies: " + responseBody.getProfile().getTechnologies());
+                    System.out.println("🌐 Languages: " + responseBody.getProfile().getLanguages());
+                    System.out.println("🏆 Achievements: " + responseBody.getProfile().getAchievements());
+                    System.out.println("🤝 Soft Skills: " + responseBody.getProfile().getSoftSkills());
                 } else {
-                    System.out.println("⚠️ Perfil es null");
+                    System.out.println("⚠️ Profile is null");
                 }
             }
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                System.out.println("✅ Microservicio respondió exitosamente");
+                System.out.println("✅ Microservice responded successfully");
                 return response.getBody();
             } else {
-                System.err.println("❌ Error en microservicio: " + response.getStatusCode());
+                System.err.println("❌ Microservice error: " + response.getStatusCode());
                 return null;
             }
 
         } catch (Exception e) {
-            System.err.println("❌ Error llamando al microservicio de procesamiento: " + e.getMessage());
+            System.err.println("❌ Error calling processing microservice: " + e.getMessage());
             e.printStackTrace();
             return null;
         }
     }
 
     /**
-     * Extrae skills del perfil del microservicio
+     * Extracts skills from microservice profile
      */
-    private List<String> extractSkillsFromProfile(VideoProcessingResponse.Profile perfil) {
+    private List<String> extractSkillsFromProfile(VideoProcessingResponse.Profile profile) {
         List<String> skills = new java.util.ArrayList<>();
 
-        if (perfil == null) {
+        if (profile == null) {
             return skills; // Return empty list if profile is null
         }
 
-        // Agregar tecnologías si existen
-        if (perfil.getTechnologies() != null && !perfil.getTechnologies().equals("No especificado")) {
-            skills.addAll(List.of(perfil.getTechnologies().split(",\\s*")));
+        // Add technologies if they exist
+        if (profile.getTechnologies() != null && !profile.getTechnologies().equals("No especificado")) {
+            skills.addAll(List.of(profile.getTechnologies().split(",\\s*")));
         }
 
-        // Agregar experiencia como skill
-        if (perfil.getProfession() != null && !perfil.getProfession().equals("No especificado")) {
-            skills.add(perfil.getProfession());
+        // Add profession as skill
+        if (profile.getProfession() != null && !profile.getProfession().equals("No especificado")) {
+            skills.add(profile.getProfession());
         }
 
         return skills;
     }
 
 
-    /**
-     * Genera un resumen del perfil basado en los datos del microservicio
-     * Ahora incluye la transcripción completa del microservicio
-     */
-    private String generateSummaryFromProfile(VideoProcessingResponse.Profile perfil) {
-        // Si tenemos la transcripción del microservicio, la usamos como resumen profesional
-        // Esta debería venir del campo transcription en VideoProcessingResponse
-        // Por ahora, generamos un resumen completo basado en los datos del perfil
 
-        StringBuilder summary = new StringBuilder();
-
-        // Agregar nombre si existe
-        if (perfil.getName() != null && !perfil.getName().equals("No especificado")) {
-            summary.append(perfil.getName()).append(" es un ");
-        } else {
-            summary.append("Profesional ");
-        }
-
-        // Agregar profesión
-        if (perfil.getProfession() != null && !perfil.getProfession().equals("No especificado")) {
-            summary.append(perfil.getProfession().toLowerCase());
-        } else {
-            summary.append("profesional");
-        }
-
-        // Agregar experiencia
-        if (perfil.getExperience() != null && !perfil.getExperience().equals("No especificado")) {
-            summary.append(" con experiencia en ").append(perfil.getExperience().toLowerCase());
-        }
-
-        summary.append(". ");
-
-        // Agregar educación
-        if (perfil.getEducation() != null && !perfil.getEducation().equals("No especificado")) {
-            summary.append("Cuenta con formación en ").append(perfil.getEducation().toLowerCase()).append(". ");
-        }
-
-        // Agregar tecnologías
-        if (perfil.getTechnologies() != null && !perfil.getTechnologies().equals("No especificado")) {
-            summary.append("Domina tecnologías como ").append(perfil.getTechnologies().toLowerCase()).append(". ");
-        }
-
-        // Agregar habilidades blandas
-        if (perfil.getSoftSkills() != null && !perfil.getSoftSkills().equals("No especificado")) {
-            summary.append("Posee habilidades como ").append(perfil.getSoftSkills().toLowerCase()).append(". ");
-        }
-
-        // Agregar logros
-        if (perfil.getAchievements() != null && !perfil.getAchievements().equals("No especificado")) {
-            summary.append("Ha logrado ").append(perfil.getAchievements().toLowerCase()).append(". ");
-        }
-
-        return summary.toString().trim();
-    }
 
     /**
-     * Elimina todos los clipers y perfiles ATS (solo para administración)
-     */
-    public void clearAllClipers() {
-        cliperRepository.deleteAll();
-        atsProfileRepository.deleteAll();
-    }
-
-    /**
-     * Elimina todos los clipers y perfiles ATS (solo para administración)
+     * Deletes all clipers and ATS profiles (admin only)
      */
     public void clearAllData() {
-        // Primero eliminar clipers
         cliperRepository.deleteAll();
-        // Luego eliminar perfiles ATS
         atsProfileRepository.deleteAll();
     }
 
     /**
-     * Guarda el archivo de video y retorna la URL
+     * Saves video file and returns URL
      */
     private String saveVideoFile(org.springframework.web.multipart.MultipartFile videoFile) {
         try {
-            // Crear directorio si no existe
+            // Create directory if it doesn't exist
             java.nio.file.Path uploadDir = java.nio.file.Paths.get("./uploads/videos");
             if (!java.nio.file.Files.exists(uploadDir)) {
                 java.nio.file.Files.createDirectories(uploadDir);
             }
 
-            // Generar nombre único para el archivo
+            // Generate unique filename
             String fileName = "video_" + System.currentTimeMillis() + "_" + videoFile.getOriginalFilename();
             java.nio.file.Path filePath = uploadDir.resolve(fileName);
 
-            // Guardar el archivo
+            // Save file
             java.nio.file.Files.copy(videoFile.getInputStream(), filePath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 
-            // Devolver URL completa para que el frontend pueda acceder
+            // Return full URL for frontend access
             return fileUploadBaseUrl + "/uploads/videos/" + fileName;
         } catch (java.io.IOException e) {
-            throw new RuntimeException("Error al guardar el archivo de video: " + e.getMessage());
+            throw new RuntimeException("Error saving video file: " + e.getMessage());
         }
     }
 
     /**
-     * Genera o actualiza el perfil ATS usando datos del microservicio (versión para User)
+     * Generates or updates ATS profile using microservice data
      */
-    private void generateOrUpdateATSProfileFromMicroservice(User user, VideoProcessingResponse.Profile perfil, String transcription, String cliperId) {
+    private void generateOrUpdateATSProfileFromMicroservice(User user, VideoProcessingResponse.Profile profile, String transcription, String cliperId) {
         try {
-            if (perfil == null) {
-                // No crear perfil ATS si no hay datos reales del microservicio
+            if (profile == null) {
+                // Don't create ATS profile if there's no real data from microservice
                 return;
             }
-            System.out.println("🔄 GENERANDO PERFIL ATS DESDE MICROSERVICIO");
-            System.out.println("👤 Usuario: " + user.getId());
-            System.out.println("📋 Datos del perfil:");
-            System.out.println("  - Nombre: " + perfil.getName());
-            System.out.println("  - Profesión: " + perfil.getProfession());
-            System.out.println("  - Experiencia: " + perfil.getExperience());
-            System.out.println("  - Educación: " + perfil.getEducation());
-            System.out.println("  - Tecnologías: " + perfil.getTechnologies());
-            System.out.println("  - Habilidades blandas: " + perfil.getSoftSkills());
-            System.out.println("  - Idiomas: " + perfil.getLanguages());
-            System.out.println("  - Logros: " + perfil.getAchievements());
+            System.out.println("🔄 GENERATING ATS PROFILE FROM MICROSERVICE");
+            System.out.println("👤 User: " + user.getId());
+            System.out.println("📋 Profile data:");
+            System.out.println("  - Name: " + profile.getName());
+            System.out.println("  - Profession: " + profile.getProfession());
+            System.out.println("  - Experience: " + profile.getExperience());
+            System.out.println("  - Education: " + profile.getEducation());
+            System.out.println("  - Technologies: " + profile.getTechnologies());
+            System.out.println("  - Soft Skills: " + profile.getSoftSkills());
+            System.out.println("  - Languages: " + profile.getLanguages());
+            System.out.println("  - Achievements: " + profile.getAchievements());
 
             Optional<ATSProfile> existingProfile = atsProfileRepository.findByUserId(user.getId());
 
             ATSProfile atsProfile;
             if (existingProfile.isPresent()) {
                 atsProfile = existingProfile.get();
-                System.out.println("📝 Actualizando perfil existente");
-                // Limpiar listas existentes para evitar duplicados
-                atsProfile.getEducation().clear();
-                atsProfile.getExperience().clear();
-                atsProfile.getSkills().clear();
-                atsProfile.getLanguages().clear();
+                System.out.println("📝 Updating existing profile with INTELLIGENT MERGE");
+                // DON'T clear lists - do intelligent merge
             } else {
                 atsProfile = new ATSProfile(user.getId());
-                System.out.println("🆕 Creando nuevo perfil ATS");
+                System.out.println("🆕 Creating new ATS profile");
             }
 
-            // Actualizar con datos del microservicio - usar transcripción como resumen profesional
+            // ALWAYS update summary with new cv_profile from microservice
             atsProfile.setSummary(transcription);
-            System.out.println("📝 Summary generado: " + atsProfile.getSummary());
+            System.out.println("📝 Summary updated with cv_profile from microservice");
 
-            // Agregar educación si existe y no está duplicada
-            if (perfil.getEducation() != null && !perfil.getEducation().equals("No especificado")) {
-                boolean educationExists = atsProfile.getEducation().stream()
-                    .anyMatch(e -> e.getInstitution().equals(perfil.getEducation()) ||
-                                 e.getDegree().equals(perfil.getEducation()));
-                if (!educationExists) {
-                    atsProfile.addEducation(perfil.getEducation(), "Grado obtenido", "Campo de estudio");
-                    System.out.println("🎓 Educación agregada: " + perfil.getEducation());
+            // INTELLIGENT MERGE: Add education only if it DOESN'T exist
+            if (profile.getEducation() != null && !profile.getEducation().equals("No especificado") && !profile.getEducation().equals("Not specified")) {
+                // Check if similar education already exists
+                boolean educationAlreadyExists = atsProfile.getEducation().stream()
+                    .anyMatch(e -> 
+                        e.getInstitution().toLowerCase().contains(profile.getEducation().toLowerCase()) ||
+                        e.getDegree().toLowerCase().contains(profile.getEducation().toLowerCase()) ||
+                        profile.getEducation().toLowerCase().contains(e.getInstitution().toLowerCase()) ||
+                        profile.getEducation().toLowerCase().contains(e.getDegree().toLowerCase())
+                    );
+                
+                if (!educationAlreadyExists) {
+                    atsProfile.addEducation(profile.getEducation(), "Degree", "Field of study");
+                    System.out.println("🎓 NEW education added: " + profile.getEducation());
                 } else {
-                    System.out.println("🎓 Educación ya existe, omitiendo");
-                }
-            } else {
-                // Agregar educación simulada solo si no hay ninguna
-                if (atsProfile.getEducation().isEmpty()) {
-                    atsProfile.addEducation("Universidad Nacional", "Ingeniería de Sistemas", "Campo de estudio");
-                    System.out.println("🎓 Educación simulada agregada");
+                    System.out.println("🎓 Education already exists, NOT duplicating");
                 }
             }
 
-            // Agregar experiencia si existe y no está duplicada
-            if (perfil.getExperience() != null && !perfil.getExperience().equals("No especificado")) {
-                boolean expExists = experienceExists(atsProfile, "Empresa Tecnológica", perfil.getProfession(), perfil.getExperience());
-                if (!expExists) {
-                    atsProfile.addExperience("Empresa Tecnológica", perfil.getProfession(), perfil.getExperience());
-                    System.out.println("💼 Experiencia agregada: " + perfil.getExperience());
+            // INTELLIGENT MERGE: Add experience only if it DOESN'T exist
+            if (profile.getExperience() != null && !profile.getExperience().equals("No especificado") && !profile.getExperience().equals("Not specified")) {
+                // Check if similar experience already exists
+                boolean experienceAlreadyExists = atsProfile.getExperience().stream()
+                    .anyMatch(e -> 
+                        e.getDescription().toLowerCase().contains(profile.getExperience().toLowerCase()) ||
+                        profile.getExperience().toLowerCase().contains(e.getDescription().toLowerCase())
+                    );
+                
+                if (!experienceAlreadyExists) {
+                    String position = profile.getProfession() != null && !profile.getProfession().equals("Not specified") 
+                        ? profile.getProfession() 
+                        : "Professional";
+                    atsProfile.addExperience("Company", position, profile.getExperience());
+                    System.out.println("💼 NEW experience added: " + profile.getExperience());
                 } else {
-                    System.out.println("💼 Experiencia ya existe, omitiendo");
-                }
-            } else {
-                // Agregar experiencia simulada solo si no hay ninguna
-                if (atsProfile.getExperience().isEmpty()) {
-                    atsProfile.addExperience("Empresa Tecnológica", "Desarrollador Full Stack",
-                        "Desarrollo de aplicaciones web usando tecnologías modernas. Experiencia en desarrollo de APIs REST y aplicaciones escalables.");
-                    System.out.println("💼 Experiencia simulada agregada");
+                    System.out.println("💼 Experience already exists, NOT duplicating");
                 }
             }
 
-            // Agregar tecnologías como skills técnicos
-            if (perfil.getTechnologies() != null && !perfil.getTechnologies().equals("No especificado")) {
-                String[] tecnologias = perfil.getTechnologies().split(",\\s*");
-                for (String tecnologia : tecnologias) {
-                    if (!skillExists(atsProfile, tecnologia.trim())) {
-                        atsProfile.addSkill(tecnologia.trim(), Skill.SkillLevel.INTERMEDIATE, Skill.SkillCategory.TECHNICAL);
-                        System.out.println("🛠️ Skill técnico agregado: " + tecnologia.trim());
-                    } else {
-                        System.out.println("🛠️ Skill técnico ya existe: " + tecnologia.trim());
-                    }
-                }
-            } else {
-                // Agregar skills técnicos simulados solo si no hay ninguno
-                if (atsProfile.getSkills().stream().noneMatch(s -> s.getCategory() == Skill.SkillCategory.TECHNICAL)) {
-                    String[] tecnologiasSimuladas = {"Java", "Spring Boot", "React", "PostgreSQL", "JavaScript"};
-                    for (String tecnologia : tecnologiasSimuladas) {
-                        atsProfile.addSkill(tecnologia, Skill.SkillLevel.INTERMEDIATE, Skill.SkillCategory.TECHNICAL);
-                        System.out.println("🛠️ Skill técnico simulado agregado: " + tecnologia);
+            // INTELLIGENT MERGE: Add technologies as technical skills only if they DON'T exist
+            if (profile.getTechnologies() != null && !profile.getTechnologies().equals("No especificado") && !profile.getTechnologies().equals("Not specified")) {
+                String[] technologies = profile.getTechnologies().split(",\\s*");
+                for (String technology : technologies) {
+                    String techName = technology.trim();
+                    if (!techName.isEmpty() && !skillExists(atsProfile, techName)) {
+                        atsProfile.addSkill(techName, Skill.SkillLevel.INTERMEDIATE, Skill.SkillCategory.TECHNICAL);
+                        System.out.println("🛠️ NEW technical skill added: " + techName);
+                    } else if (skillExists(atsProfile, techName)) {
+                        System.out.println("🛠️ Technical skill already exists, NOT duplicating: " + techName);
                     }
                 }
             }
 
-            // Agregar habilidades blandas como skills soft
-            if (perfil.getSoftSkills() != null && !perfil.getSoftSkills().equals("No especificado")) {
-                String[] habilidades = perfil.getSoftSkills().split(",\\s*");
-                for (String habilidad : habilidades) {
-                    if (!skillExists(atsProfile, habilidad.trim())) {
-                        atsProfile.addSkill(habilidad.trim(), Skill.SkillLevel.INTERMEDIATE, Skill.SkillCategory.SOFT);
-                        System.out.println("🤝 Skill blando agregado: " + habilidad.trim());
-                    } else {
-                        System.out.println("🤝 Skill blando ya existe: " + habilidad.trim());
-                    }
-                }
-            } else {
-                // Agregar skills blandos simulados solo si no hay ninguno
-                if (atsProfile.getSkills().stream().noneMatch(s -> s.getCategory() == Skill.SkillCategory.SOFT)) {
-                    String[] habilidadesSimuladas = {"Trabajo en equipo", "Comunicación", "Resolución de problemas"};
-                    for (String habilidad : habilidadesSimuladas) {
-                        atsProfile.addSkill(habilidad, Skill.SkillLevel.INTERMEDIATE, Skill.SkillCategory.SOFT);
-                        System.out.println("🤝 Skill blando simulado agregado: " + habilidad);
+            // INTELLIGENT MERGE: Add soft skills only if they DON'T exist
+            if (profile.getSoftSkills() != null && !profile.getSoftSkills().equals("No especificado") && !profile.getSoftSkills().equals("Not specified")) {
+                String[] softSkills = profile.getSoftSkills().split(",\\s*");
+                for (String softSkill : softSkills) {
+                    String skillName = softSkill.trim();
+                    if (!skillName.isEmpty() && !skillExists(atsProfile, skillName)) {
+                        atsProfile.addSkill(skillName, Skill.SkillLevel.INTERMEDIATE, Skill.SkillCategory.SOFT);
+                        System.out.println("🤝 NEW soft skill added: " + skillName);
+                    } else if (skillExists(atsProfile, skillName)) {
+                        System.out.println("🤝 Soft skill already exists, NOT duplicating: " + skillName);
                     }
                 }
             }
 
-            // Agregar idiomas si existen
-            if (perfil.getLanguages() != null && !perfil.getLanguages().equals("No especificado")) {
-                String[] idiomas = perfil.getLanguages().split(",\\s*");
-                for (String idioma : idiomas) {
-                    if (!languageExists(atsProfile, idioma.trim())) {
-                        atsProfile.addLanguage(idioma.trim(), Language.LanguageLevel.INTERMEDIATE);
-                        System.out.println("🌐 Idioma agregado: " + idioma.trim());
-                    } else {
-                        System.out.println("🌐 Idioma ya existe: " + idioma.trim());
-                    }
-                }
-            } else {
-                // Agregar idiomas simulados solo si no hay ninguno
-                if (atsProfile.getLanguages().isEmpty()) {
-                    String[] idiomasSimulados = {"Español", "Inglés"};
-                    for (String idioma : idiomasSimulados) {
-                        atsProfile.addLanguage(idioma, Language.LanguageLevel.INTERMEDIATE);
-                        System.out.println("🌐 Idioma simulado agregado: " + idioma);
+            // INTELLIGENT MERGE: Add languages only if they DON'T exist
+            if (profile.getLanguages() != null && !profile.getLanguages().equals("No especificado") && !profile.getLanguages().equals("Not specified")) {
+                String[] languages = profile.getLanguages().split(",\\s*");
+                for (String language : languages) {
+                    String languageName = language.trim();
+                    if (!languageName.isEmpty() && !languageExists(atsProfile, languageName)) {
+                        atsProfile.addLanguage(languageName, Language.LanguageLevel.INTERMEDIATE);
+                        System.out.println("🌐 NEW language added: " + languageName);
+                    } else if (languageExists(atsProfile, languageName)) {
+                        System.out.println("🌐 Language already exists, NOT duplicating: " + languageName);
                     }
                 }
             }
 
             ATSProfile savedProfile = atsProfileRepository.save(atsProfile);
-            System.out.println("✅ Perfil ATS guardado exitosamente con ID: " + savedProfile.getId());
-            System.out.println("📊 Estadísticas del perfil:");
-            System.out.println("  - Educación: " + savedProfile.getEducation().size());
-            System.out.println("  - Experiencia: " + savedProfile.getExperience().size());
+            System.out.println("✅ ATS profile saved successfully with ID: " + savedProfile.getId());
+            System.out.println("📊 Profile statistics:");
+            System.out.println("  - Education: " + savedProfile.getEducation().size());
+            System.out.println("  - Experience: " + savedProfile.getExperience().size());
             System.out.println("  - Skills: " + savedProfile.getSkills().size());
-            System.out.println("  - Idiomas: " + savedProfile.getLanguages().size());
+            System.out.println("  - Languages: " + savedProfile.getLanguages().size());
 
         } catch (Exception e) {
-            System.err.println("❌ Error generando perfil ATS desde microservicio para usuario " + user.getId() + ": " + e.getMessage());
+            System.err.println("❌ Error generating ATS profile from microservice for user " + user.getId() + ": " + e.getMessage());
             e.printStackTrace();
         }
     }
 
-    /**
-     * Genera o actualiza el perfil ATS con datos simulados completos
-     */
-    private void generateOrUpdateATSProfileSimulated(User user) {
-        try {
-            Optional<ATSProfile> existingProfile = atsProfileRepository.findByUserId(user.getId());
-
-            ATSProfile atsProfile;
-            if (existingProfile.isPresent()) {
-                atsProfile = existingProfile.get();
-                // Limpiar listas existentes para evitar duplicados
-                atsProfile.getEducation().clear();
-                atsProfile.getExperience().clear();
-                atsProfile.getSkills().clear();
-                atsProfile.getLanguages().clear();
-            } else {
-                atsProfile = new ATSProfile(user.getId());
-            }
-
-            // Generar contenido simulado completo
-            String simulatedSummary = "Profesional con experiencia en desarrollo de software. " +
-                "Especializado en tecnologías web y aplicaciones empresariales. " +
-                "Conocimientos en Java, Spring Boot, React y bases de datos SQL/NoSQL.";
-
-            atsProfile.setSummary(simulatedSummary);
-
-            // Agregar educación simulada
-            atsProfile.addEducation("Universidad Nacional", "Ingeniería de Sistemas", "Campo de estudio");
-
-            // Agregar experiencia simulada
-            atsProfile.addExperience("Empresa Tecnológica", "Desarrollador Full Stack",
-                "Desarrollo de aplicaciones web usando Java, Spring Boot, React y PostgreSQL. " +
-                "Experiencia en desarrollo de APIs REST y aplicaciones escalables.");
-
-            // Agregar skills técnicas simuladas
-            String[] tecnologias = {"Java", "Spring Boot", "React", "PostgreSQL", "JavaScript", "TypeScript", "Git"};
-            for (String tecnologia : tecnologias) {
-                atsProfile.addSkill(tecnologia, Skill.SkillLevel.INTERMEDIATE, Skill.SkillCategory.TECHNICAL);
-            }
-
-            // Agregar skills blandas simuladas
-            String[] habilidadesBlandas = {"Trabajo en equipo", "Comunicación", "Resolución de problemas", "Aprendizaje continuo"};
-            for (String habilidad : habilidadesBlandas) {
-                atsProfile.addSkill(habilidad, Skill.SkillLevel.INTERMEDIATE, Skill.SkillCategory.SOFT);
-            }
-
-            // Agregar idiomas simulados
-            String[] idiomas = {"Español", "Inglés"};
-            for (String idioma : idiomas) {
-                atsProfile.addLanguage(idioma, Language.LanguageLevel.INTERMEDIATE);
-            }
-
-            atsProfileRepository.save(atsProfile);
-
-        } catch (Exception e) {
-            System.err.println("Error generando perfil ATS simulado para usuario " + user.getId() + ": " + e.getMessage());
-        }
-    }
 
 
     /**
-     * Crea una respuesta simulada del microservicio con datos variados
-     */
-    private VideoProcessingResponse createSimulatedVideoProcessingResponse() {
-        VideoProcessingResponse response = new VideoProcessingResponse();
-        VideoProcessingResponse.Profile profile = new VideoProcessingResponse.Profile();
-
-        // Generar datos variados basados en diferentes profesiones
-        String[] professions = {
-            "Desarrollador Full Stack", "Ingeniero de Software", "Analista de Sistemas",
-            "Arquitecto de Software", "Desarrollador Frontend", "Desarrollador Backend",
-            "Ingeniero DevOps", "Analista de Datos", "Científico de Datos",
-            "Ingeniero de Machine Learning", "Desarrollador Mobile", "Contador Público",
-            "Administrador de Empresas", "Ingeniero Industrial", "Médico General",
-            "Abogado Corporativo", "Profesor Universitario", "Diseñador Gráfico"
-        };
-
-        String[] experiences = {
-            "5 años de experiencia en desarrollo de aplicaciones empresariales",
-            "3 años trabajando en proyectos de software a gran escala",
-            "7 años en el sector tecnológico con enfoque en soluciones innovadoras",
-            "4 años liderando equipos de desarrollo y proyectos ágiles",
-            "6 años en consultoría de sistemas y transformación digital",
-            "2 años en startups tecnológicas con crecimiento exponencial",
-            "8 años en desarrollo de software y arquitectura de sistemas",
-            "3 años en investigación y desarrollo de nuevas tecnologías"
-        };
-
-        String[] educations = {
-            "Ingeniería de Sistemas, Universidad Nacional",
-            "Contaduría Pública, Universidad de los Andes",
-            "Ingeniería Industrial, Universidad Javeriana",
-            "Administración de Empresas, Universidad Externado",
-            "Medicina, Universidad del Rosario",
-            "Derecho, Universidad de los Andes",
-            "Diseño Gráfico, Universidad Jorge Tadeo Lozano",
-            "Matemáticas, Universidad Nacional"
-        };
-
-        String[][] technologies = {
-            {"Java", "Spring Boot", "PostgreSQL", "React", "JavaScript"},
-            {"Python", "Django", "MongoDB", "Vue.js", "TypeScript"},
-            {"C#", ".NET", "SQL Server", "Angular", "Node.js"},
-            {"PHP", "Laravel", "MySQL", "React Native", "Flutter"},
-            {"Go", "Kubernetes", "Docker", "AWS", "Terraform"},
-            {"R", "Python", "Tableau", "Power BI", "SQL"},
-            {"Swift", "Kotlin", "Firebase", "React Native", "Flutter"},
-            {"Excel", "SAP", "Oracle", "Power BI", "SQL"}
-        };
-
-        String[] softSkills = {
-            "Trabajo en equipo, Comunicación efectiva, Resolución de problemas",
-            "Liderazgo, Adaptabilidad, Pensamiento crítico",
-            "Creatividad, Gestión del tiempo, Aprendizaje continuo",
-            "Empatía, Negociación, Toma de decisiones",
-            "Organización, Atención al detalle, Orientación a resultados"
-        };
-
-        String[] languages = {
-            "Español nativo, Inglés avanzado",
-            "Español nativo, Inglés intermedio, Francés básico",
-            "Español nativo, Inglés avanzado, Alemán intermedio",
-            "Español nativo, Inglés avanzado, Portugués intermedio",
-            "Español nativo, Inglés intermedio"
-        };
-
-        String[] achievements = {
-            "Certificación Scrum Master, Participación en proyectos internacionales",
-            "Publicación de artículos técnicos, Conferencias en eventos del sector",
-            "Liderazgo de equipos multiculturales, Implementación de metodologías ágiles",
-            "Desarrollo de patentes, Reconocimientos por innovación tecnológica",
-            "Excelencia académica, Becas de investigación obtenidas"
-        };
-
-        // Seleccionar índices aleatorios para variar los datos
-        int profIndex = (int) (Math.random() * professions.length);
-        int expIndex = (int) (Math.random() * experiences.length);
-        int eduIndex = (int) (Math.random() * educations.length);
-        int techIndex = (int) (Math.random() * technologies.length);
-        int softIndex = (int) (Math.random() * softSkills.length);
-        int langIndex = (int) (Math.random() * languages.length);
-        int achIndex = (int) (Math.random() * achievements.length);
-
-        // Generar transcripción simulada
-        String transcription = "Hola, soy " + professions[profIndex].toLowerCase() +
-            " con " + experiences[expIndex].toLowerCase() +
-            ". Mi formación académica incluye " + educations[eduIndex].toLowerCase() +
-            ". Tengo experiencia en " + String.join(", ", technologies[techIndex]).toLowerCase() +
-            ". Mis habilidades blandas incluyen " + softSkills[softIndex].toLowerCase() +
-            ". Hablo " + languages[langIndex].toLowerCase() +
-            ". Entre mis logros destacan " + achievements[achIndex].toLowerCase() + ".";
-
-        // Configurar el perfil
-        profile.setName("Usuario Candidato");
-        profile.setProfession(professions[profIndex]);
-        profile.setExperience(experiences[expIndex]);
-        profile.setEducation(educations[eduIndex]);
-        profile.setTechnologies(String.join(", ", technologies[techIndex]));
-        profile.setSoftSkills(softSkills[softIndex]);
-        profile.setLanguages(languages[langIndex]);
-        profile.setAchievements(achievements[achIndex]);
-
-        response.setTranscription(transcription);
-        response.setProfile(profile);
-
-        return response;
-    }
-
-    /**
-     * Crea un perfil vacío - no generamos datos simulados
-     */
-    private VideoProcessingResponse.Profile createSimulatedProfile() {
-        // Return empty profile - no auto-generation of data
-        return new VideoProcessingResponse.Profile();
-    }
-
-    /**
-     * Método auxiliar para verificar si una experiencia ya existe
-     */
-    private boolean experienceExists(ATSProfile atsProfile, String company, String position, String description) {
-        return atsProfile.getExperience().stream()
-            .anyMatch(exp -> exp.getCompany().equals(company) &&
-                           exp.getPosition().equals(position) &&
-                           exp.getDescription().equals(description));
-    }
-
-    /**
-     * Método auxiliar para verificar si una habilidad ya existe
+     * Helper method to check if a skill already exists
      */
     private boolean skillExists(ATSProfile atsProfile, String skillName) {
         return atsProfile.getSkills().stream()
-            .anyMatch(skill -> skill.getName().equals(skillName));
+            .anyMatch(skill -> skill.getName().equalsIgnoreCase(skillName.trim()));
     }
 
     /**
-     * Método auxiliar para verificar si un idioma ya existe
+     * Helper method to check if a language already exists (case-insensitive)
      */
     private boolean languageExists(ATSProfile atsProfile, String languageName) {
         return atsProfile.getLanguages().stream()
-            .anyMatch(lang -> lang.getName().equals(languageName));
+            .anyMatch(lang -> lang.getName().equalsIgnoreCase(languageName.trim()));
     }
 
     /**
-     * Actualiza el perfil ATS con el ID del cliper
+     * Deletes a cliper and its associated video
+     * Implements automatic file cleanup
      */
-    private void updateATSProfileWithCliperId(String userId, String cliperId) {
+    private void deleteCliperAndVideo(Cliper cliper) {
         try {
-            Optional<ATSProfile> existingProfile = atsProfileRepository.findByUserId(userId);
-
-            if (existingProfile.isPresent()) {
-                ATSProfile atsProfile = existingProfile.get();
-                atsProfile.setCliperId(cliperId);
-                atsProfileRepository.save(atsProfile);
+            System.out.println("Deleting cliper: " + cliper.getId());
+            
+            // Delete video
+            if (cliper.getVideoUrl() != null && !cliper.getVideoUrl().isEmpty()) {
+                deleteVideoFile(cliper.getVideoUrl());
             }
-
+            
+            // Delete thumbnail if exists
+            if (cliper.getThumbnailUrl() != null && !cliper.getThumbnailUrl().isEmpty()) {
+                deleteVideoFile(cliper.getThumbnailUrl());
+            }
+            
+            // Delete from DB
+            cliperRepository.delete(cliper);
+            
+            System.out.println("Cliper deleted successfully: " + cliper.getId());
+            
         } catch (Exception e) {
-            System.err.println("Error actualizando perfil ATS con cliper ID para usuario " + userId + ": " + e.getMessage());
+            System.err.println("Error deleting cliper " + cliper.getId() + ": " + e.getMessage());
+            // Don't throw exception to avoid interrupting new cliper creation
+        }
+    }
+
+    /**
+     * Deletes a video file from filesystem
+     */
+    private void deleteVideoFile(String videoUrl) {
+        try {
+            // Extract filename from URL
+            String fileName = videoUrl.substring(videoUrl.lastIndexOf('/') + 1);
+            java.nio.file.Path filePath = java.nio.file.Paths.get("./uploads/videos", fileName);
+            
+            // Delete file if exists
+            if (java.nio.file.Files.exists(filePath)) {
+                java.nio.file.Files.delete(filePath);
+                System.out.println("File deleted: " + filePath);
+            } else {
+                System.out.println("File not found (already deleted): " + filePath);
+            }
+            
+        } catch (Exception e) {
+            System.err.println("Error deleting video file: " + e.getMessage());
+            // Don't throw exception, just log error
         }
     }
 }

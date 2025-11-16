@@ -278,6 +278,7 @@ public class CliperController {
     private Integer extractVideoDuration(MultipartFile videoFile) {
         // Simular extracción de duración
         // En producción, usaría FFmpeg para obtener la duración real
-        return 30 + (int)(Math.random() * 120); // 30-150 segundos
+        // Generar duración entre 15-120 segundos (válido según validación)
+        return 15 + (int)(Math.random() * 105); // 15-120 segundos
     }
 }
