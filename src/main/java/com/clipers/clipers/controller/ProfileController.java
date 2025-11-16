@@ -208,11 +208,24 @@ public class ProfileController {
             String level = request.get("level");
             String category = request.get("category");
 
+            // Validar que los campos no estén vacíos
+            if (name == null || name.trim().isEmpty()) {
+                throw new IllegalArgumentException("El nombre de la habilidad es requerido");
+            }
+            if (level == null || level.trim().isEmpty()) {
+                throw new IllegalArgumentException("El nivel de la habilidad es requerido");
+            }
+            if (category == null || category.trim().isEmpty()) {
+                throw new IllegalArgumentException("La categoría de la habilidad es requerida");
+            }
+
             com.clipers.clipers.entity.Skill.SkillLevel skillLevel = com.clipers.clipers.entity.Skill.SkillLevel.valueOf(level.toUpperCase());
             com.clipers.clipers.entity.Skill.SkillCategory skillCategory = com.clipers.clipers.entity.Skill.SkillCategory.valueOf(category.toUpperCase());
 
             com.clipers.clipers.entity.Skill skill = atsProfileService.addSkill(userId, name, skillLevel, skillCategory);
             return ResponseEntity.ok(skill);
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Error al agregar habilidad: " + e.getMessage(), e);
         } catch (Exception e) {
             throw new RuntimeException("Error al agregar habilidad: " + e.getMessage(), e);
         }
