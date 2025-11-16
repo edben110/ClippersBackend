@@ -223,6 +223,7 @@ public class CliperService {
 
     /**
      * Command Pattern implicit - retries processing of a failed Cliper
+     * Note: This requires the original video file to be re-uploaded
      */
     public void retryProcessing(String cliperId) {
         Cliper cliper = cliperRepository.findById(cliperId)
@@ -232,35 +233,15 @@ public class CliperService {
             throw new IllegalStateException("Can only retry processing of failed Clipers");
         }
 
-        // Reset state and restart processing with simulation (we don't have original file)
-        cliper.setStatus(Cliper.Status.UPLOADED);
-        cliper = cliperRepository.save(cliper);
-
-        // For retry, use simulated processing since we don't have the original file
-        new Thread(() -> {
-            try {
-                Thread.sleep(100);
-                Cliper cliperToRetry = cliperRepository.findById(cliperId)
-                    .orElseThrow(() -> new RuntimeException("Cliper not found: " + cliperId));
-
-                cliperToRetry.setStatus(Cliper.Status.PROCESSING);
-                cliperRepository.save(cliperToRetry);
-
-                System.out.println("Retrying simulated processing for cliper: " + cliperToRetry.getId());
-                cliperToRetry.processVideo();
-
-                if (cliperToRetry.getStatus() == Cliper.Status.DONE) {
-                    cliperRepository.save(cliperToRetry);
-                    notificationService.notifyCliperProcessed(cliperToRetry.getUserId(), cliperToRetry.getId());
-                } else {
-                    cliperToRetry.setStatus(Cliper.Status.FAILED);
-                    cliperRepository.save(cliperToRetry);
-                }
-
-            } catch (Exception e) {
-                System.err.println("Error retrying processing for cliper " + cliperId + ": " + e.getMessage());
-            }
-        }).start();
+        // For retry, we would need to re-upload the video to the microservice
+        // Since we don't have the original file, mark as failed
+        cliper.setStatus(Cliper.Status.FAILED);
+        cliperRepository.save(cliper);
+        
+        throw new IllegalStateException(
+            "Cannot retry processing without original video file. " +
+            "Please upload the video again."
+        );
     }
 
     /**
@@ -584,5 +565,49 @@ public class CliperService {
             System.err.println("Error deleting video file: " + e.getMessage());
             // Don't throw exception, just log error
         }
+    }
+
+    /**
+     * Toggle like on a cliper
+     */
+    public Cliper toggleLike(String cliperId, String userId) {
+        Cliper cliper = cliperRepository.findById(cliperId)
+                .orElseThrow(() -> new RuntimeException("Cliper not found"));
+        
+        if (cliper.isLikedBy(userId)) {
+            cliper.removeLike(userId);
+        } else {
+            cliper.addLike(userId);
+        }
+        
+        return cliperRepository.save(cliper);
+    }
+
+    /**
+     * Add comment to a cliper
+     */
+    public Cliper addComment(String cliperId, String userId, String userName, String text) {
+        Cliper cliper = cliperRepository.findById(cliperId)
+                .orElseThrow(() -> new RuntimeException("Cliper not found"));
+        
+        Cliper.Comment comment = new Cliper.Comment(userId, userName, text);
+        cliper.addComment(comment);
+        
+        return cliperRepository.save(cliper);
+    }
+
+    /**
+     * Delete comment from a cliper
+     */
+    public Cliper deleteComment(String cliperId, String commentId, String userId) {
+        Cliper cliper = cliperRepository.findById(cliperId)
+                .orElseThrow(() -> new RuntimeException("Cliper not found"));
+        
+        // Find and remove comment if user owns it
+        cliper.getComments().removeIf(comment -> 
+            comment.getId().equals(commentId) && comment.getUserId().equals(userId)
+        );
+        
+        return cliperRepository.save(cliper);
     }
 }

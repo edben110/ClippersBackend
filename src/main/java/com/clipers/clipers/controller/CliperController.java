@@ -281,4 +281,58 @@ public class CliperController {
         // Generar duración entre 15-120 segundos (válido según validación)
         return 15 + (int)(Math.random() * 105); // 15-120 segundos
     }
+
+    // Like/Unlike endpoints
+    @PostMapping("/{id}/like")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, Object>> toggleLike(@PathVariable String id) {
+        try {
+            String userId = getCurrentUserId();
+            Cliper cliper = cliperService.toggleLike(id, userId);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("liked", cliper.isLikedBy(userId));
+            response.put("likesCount", cliper.getLikesCount());
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            throw new RuntimeException("Error al dar like: " + e.getMessage(), e);
+        }
+    }
+
+    // Comment endpoints
+    @PostMapping("/{id}/comments")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<CliperDTO> addComment(
+            @PathVariable String id,
+            @RequestBody Map<String, Object> request) {
+        try {
+            String userId = getCurrentUserId();
+            String text = (String) request.get("text");
+            
+            // Get user name
+            String userName = userRepository.findById(userId)
+                    .map(user -> user.getFirstName() + " " + user.getLastName())
+                    .orElse("Usuario");
+            
+            Cliper cliper = cliperService.addComment(id, userId, userName, text);
+            return ResponseEntity.ok(new CliperDTO(cliper));
+        } catch (Exception e) {
+            throw new RuntimeException("Error al agregar comentario: " + e.getMessage(), e);
+        }
+    }
+
+    @DeleteMapping("/{cliperId}/comments/{commentId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<CliperDTO> deleteComment(
+            @PathVariable String cliperId,
+            @PathVariable String commentId) {
+        try {
+            String userId = getCurrentUserId();
+            Cliper cliper = cliperService.deleteComment(cliperId, commentId, userId);
+            return ResponseEntity.ok(new CliperDTO(cliper));
+        } catch (Exception e) {
+            throw new RuntimeException("Error al eliminar comentario: " + e.getMessage(), e);
+        }
+    }
 }
