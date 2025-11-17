@@ -43,13 +43,15 @@ public class JobController {
     private final AuthService authService;
     private final NotificationService notificationService;
     private final CompanyRepository companyRepository;
+    private final com.clipers.clipers.service.TechnicalTestService technicalTestService;
 
     @Autowired
-    public JobController(JobService jobService, AuthService authService, NotificationService notificationService, CompanyRepository companyRepository) {
+    public JobController(JobService jobService, AuthService authService, NotificationService notificationService, CompanyRepository companyRepository, com.clipers.clipers.service.TechnicalTestService technicalTestService) {
         this.jobService = jobService;
         this.authService = authService;
         this.notificationService = notificationService;
         this.companyRepository = companyRepository;
+        this.technicalTestService = technicalTestService;
     }
 
     @PostMapping
@@ -357,5 +359,117 @@ public class JobController {
                (type != null && !type.isEmpty()) ||
                salaryMin != null ||
                salaryMax != null;
+    }
+
+    // Technical Test Endpoints
+    
+    @PostMapping("/{jobId}/technical-test/send")
+    @PreAuthorize("hasRole('COMPANY')")
+    public ResponseEntity<com.clipers.clipers.entity.TechnicalTest> sendTechnicalTest(
+            @PathVariable String jobId,
+            @RequestBody Map<String, String> request) {
+        try {
+            String candidateId = request.get("candidateId");
+            String companyUserId = getCurrentUserId();
+            
+            // Get company ID
+            Optional<com.clipers.clipers.entity.Company> companyOpt = 
+                companyRepository.findByUserId(companyUserId);
+            
+            if (!companyOpt.isPresent()) {
+                throw new RuntimeException("Company not found");
+            }
+            
+            String companyId = companyOpt.get().getId();
+            
+            com.clipers.clipers.entity.TechnicalTest test = 
+                technicalTestService.generateAndSendTest(jobId, candidateId, companyId);
+            
+            return ResponseEntity.ok(test);
+        } catch (Exception e) {
+            throw new RuntimeException("Error sending technical test: " + e.getMessage(), e);
+        }
+    }
+    
+    @GetMapping("/{jobId}/technical-tests")
+    @PreAuthorize("hasRole('COMPANY')")
+    public ResponseEntity<List<com.clipers.clipers.entity.TechnicalTest>> getJobTechnicalTests(
+            @PathVariable String jobId) {
+        try {
+            List<com.clipers.clipers.entity.TechnicalTest> tests = 
+                technicalTestService.getTestsByJob(jobId);
+            return ResponseEntity.ok(tests);
+        } catch (Exception e) {
+            throw new RuntimeException("Error getting technical tests: " + e.getMessage(), e);
+        }
+    }
+    
+    @GetMapping("/technical-tests/my-tests")
+    @PreAuthorize("hasRole('CANDIDATE')")
+    public ResponseEntity<List<com.clipers.clipers.entity.TechnicalTest>> getMyCandidateTests() {
+        try {
+            String candidateId = getCurrentUserId();
+            List<com.clipers.clipers.entity.TechnicalTest> tests = 
+                technicalTestService.getTestsByCandidate(candidateId);
+            return ResponseEntity.ok(tests);
+        } catch (Exception e) {
+            throw new RuntimeException("Error getting your technical tests: " + e.getMessage(), e);
+        }
+    }
+    
+    @PostMapping("/technical-tests/{testId}/submit")
+    @PreAuthorize("hasRole('CANDIDATE')")
+    public ResponseEntity<com.clipers.clipers.entity.TechnicalTest> submitTechnicalTest(
+            @PathVariable String testId,
+            @RequestBody Map<String, String> request) {
+        try {
+            String response = request.get("response");
+            com.clipers.clipers.entity.TechnicalTest test = 
+                technicalTestService.submitTest(testId, response);
+            return ResponseEntity.ok(test);
+        } catch (Exception e) {
+            throw new RuntimeException("Error submitting response: " + e.getMessage(), e);
+        }
+    }
+    
+    @PostMapping("/technical-tests/{testId}/review")
+    @PreAuthorize("hasRole('COMPANY')")
+    public ResponseEntity<com.clipers.clipers.entity.TechnicalTest> reviewTechnicalTest(
+            @PathVariable String testId,
+            @RequestBody Map<String, Object> request) {
+        try {
+            Integer score = (Integer) request.get("score");
+            String feedback = (String) request.get("feedback");
+            com.clipers.clipers.entity.TechnicalTest test = 
+                technicalTestService.reviewTest(testId, score, feedback);
+            return ResponseEntity.ok(test);
+        } catch (Exception e) {
+            throw new RuntimeException("Error reviewing test: " + e.getMessage(), e);
+        }
+    }
+    
+    @GetMapping("/{jobId}/technical-tests/candidate/{candidateId}")
+    @PreAuthorize("hasRole('COMPANY')")
+    public ResponseEntity<List<com.clipers.clipers.entity.TechnicalTest>> getCandidateTechnicalTests(
+            @PathVariable String jobId,
+            @PathVariable String candidateId) {
+        try {
+            List<com.clipers.clipers.entity.TechnicalTest> tests = 
+                technicalTestService.getTestsByJobAndCandidate(jobId, candidateId);
+            return ResponseEntity.ok(tests);
+        } catch (Exception e) {
+            throw new RuntimeException("Error getting candidate technical tests: " + e.getMessage(), e);
+        }
+    }
+
+    @DeleteMapping("/technical-tests/{testId}")
+    @PreAuthorize("hasRole('COMPANY')")
+    public ResponseEntity<Void> deleteTechnicalTest(@PathVariable String testId) {
+        try {
+            technicalTestService.deleteTest(testId);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            throw new RuntimeException("Error deleting technical test: " + e.getMessage(), e);
+        }
     }
 }
