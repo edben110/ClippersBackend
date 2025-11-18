@@ -206,9 +206,14 @@ public class CliperService {
         return cliperRepository.findBySkillsContaining(skill);
     }
 
-    public Cliper updateCliper(String id, String title, String description) {
+    public Cliper updateCliper(String id, String userId, String title, String description) {
         Cliper cliper = cliperRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Cliper not found"));
+
+        // Verify ownership - only the owner can edit their cliper
+        if (!cliper.getUserId().equals(userId)) {
+            throw new IllegalStateException("You can only edit your own clipers");
+        }
 
         // State Pattern implicit - check if it can be edited
         if (!cliper.canBeEdited()) {
@@ -221,16 +226,33 @@ public class CliperService {
         return cliperRepository.save(cliper);
     }
 
-    public void deleteCliper(String id) {
+    public void deleteCliper(String id, String userId) {
         Cliper cliper = cliperRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Cliper not found"));
+
+        // Verify ownership - only the owner can delete their cliper
+        if (!cliper.getUserId().equals(userId)) {
+            throw new IllegalStateException("You can only delete your own clipers");
+        }
 
         // State Pattern implicit - check if it can be deleted
         if (!cliper.canBeEdited()) {
             throw new IllegalStateException("Cliper cannot be deleted in its current state: " + cliper.getStatus());
         }
 
+        // Delete video file
+        if (cliper.getVideoUrl() != null && !cliper.getVideoUrl().isEmpty()) {
+            deleteVideoFile(cliper.getVideoUrl());
+        }
+        
+        // Delete thumbnail if exists
+        if (cliper.getThumbnailUrl() != null && !cliper.getThumbnailUrl().isEmpty()) {
+            deleteVideoFile(cliper.getThumbnailUrl());
+        }
+
+        // Delete cliper from database
         cliperRepository.deleteById(id);
+        System.out.println("✅ Cliper deleted from database: " + id);
     }
 
     public List<Cliper> findByStatus(Cliper.Status status) {

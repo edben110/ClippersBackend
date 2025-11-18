@@ -233,11 +233,14 @@ public class CliperController {
     public ResponseEntity<CliperDTO> updateCliper(
             @PathVariable String id, @RequestBody Map<String, String> request) {
         try {
+            String userId = getCurrentUserId();
             String title = request.get("title");
             String description = request.get("description");
 
-            Cliper updatedCliper = cliperService.updateCliper(id, title, description);
+            Cliper updatedCliper = cliperService.updateCliper(id, userId, title, description);
             return ResponseEntity.ok(new CliperDTO(updatedCliper));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(403).build(); // Forbidden
         } catch (Exception e) {
             throw new RuntimeException("Error al actualizar cliper: " + e.getMessage(), e);
         }
@@ -247,8 +250,11 @@ public class CliperController {
     @PreAuthorize("hasRole('CANDIDATE')")
     public ResponseEntity<Void> deleteCliper(@PathVariable String id) {
         try {
-            cliperService.deleteCliper(id);
+            String userId = getCurrentUserId();
+            cliperService.deleteCliper(id, userId);
             return ResponseEntity.ok().build();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(403).build(); // Forbidden
         } catch (Exception e) {
             throw new RuntimeException("Error al eliminar cliper: " + e.getMessage(), e);
         }
