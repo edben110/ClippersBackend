@@ -195,6 +195,35 @@ public class AIMatchingService {
         response.setJobTitle(job.getTitle());
         response.setTotalCandidates(candidates.size());
         response.setAverageScore(0.5);
+        
+        // Create fallback matches for each candidate
+        List<RankedMatchResultDTO> matches = new java.util.ArrayList<>();
+        int rank = 1;
+        for (CandidateDTO candidate : candidates) {
+            RankedMatchResultDTO match = new RankedMatchResultDTO();
+            match.setCandidateId(candidate.getId());
+            match.setCandidateName(candidate.getName());
+            match.setCompatibilityScore(0.5);
+            match.setMatchPercentage(50);
+            match.setRank(rank++);
+            match.setMatchQuality("medium");
+            match.setExplanation("AI service unavailable - using fallback matching");
+            match.setMatchedSkills(new java.util.ArrayList<>());
+            match.setMissingSkills(new java.util.ArrayList<>());
+            match.setRecommendations(new java.util.ArrayList<>());
+            
+            MatchBreakdownDTO breakdown = new MatchBreakdownDTO();
+            breakdown.setSkillsMatch(0.5);
+            breakdown.setExperienceMatch(0.5);
+            breakdown.setEducationMatch(0.5);
+            breakdown.setSemanticMatch(0.5);
+            match.setBreakdown(breakdown);
+            
+            matches.add(match);
+        }
+        
+        response.setMatches(matches);
+        response.setTopSkillsMatched(new java.util.ArrayList<>());
         return response;
     }
 

@@ -30,7 +30,7 @@ public class TechnicalTestService {
     private final NotificationService notificationService;
     private final RestTemplate restTemplate;
     
-    @Value("${video.processing.service.url:https://video.clipers.pro}")
+    @Value("${video.processing.service.url}")
     private String videoProcessingServiceUrl;
     
     @Autowired

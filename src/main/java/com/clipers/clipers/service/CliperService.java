@@ -280,8 +280,9 @@ public class CliperService {
             HttpEntity<MultiValueMap<String, Object>> entity = new HttpEntity<>(body, headers);
 
             System.out.println("Sending request to microservice...");
+            String uploadUrl = videoProcessingServiceUrl + "/upload-video";
             ResponseEntity<VideoProcessingResponse> response = restTemplate.postForEntity(
-                videoProcessingServiceUrl,
+                uploadUrl,
                 entity,
                 VideoProcessingResponse.class
             );
