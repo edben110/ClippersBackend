@@ -42,10 +42,13 @@ public class CliperService {
     private final NotificationService notificationService;
     private final RestTemplate restTemplate;
 
-    @Value("${video.processing.service.url:https://video.clipers.pro/upload-video}")
+    @Value("${video.processing.service.url}")
     private String videoProcessingServiceUrl;
 
-    @Value("${file.upload.base.url:http://localhost:8080}")
+    @Value("${video.processing.service.enabled}")
+    private boolean videoProcessingEnabled;
+
+    @Value("${file.upload.base.url}")
     private String fileUploadBaseUrl;
 
     @Autowired
@@ -99,25 +102,31 @@ public class CliperService {
 
         // Step 5: Process video synchronously before saving cliper
         VideoProcessingResponse response = null;
-        if (videoFilePath != null) {
+        if (videoFilePath != null && videoProcessingEnabled) {
             response = callVideoProcessingService(videoFilePath);
         }
 
-        // If microservice fails, mark as FAILED and don't create fake data
+        // If microservice is disabled or fails, use simulated data for development
         if (response == null || response.getProfile() == null) {
-            // Delete saved video if processing failed
-            if (videoFilePath != null) {
-                try {
-                    java.nio.file.Files.deleteIfExists(videoFilePath);
-                } catch (Exception e) {
-                    System.err.println("Error deleting video after failure: " + e.getMessage());
+            if (videoProcessingEnabled) {
+                // Only fail if service is enabled but not responding
+                if (videoFilePath != null) {
+                    try {
+                        java.nio.file.Files.deleteIfExists(videoFilePath);
+                    } catch (Exception e) {
+                        System.err.println("Error deleting video after failure: " + e.getMessage());
+                    }
                 }
+                
+                throw new RuntimeException(
+                    "Could not process video. Processing service is not available. " +
+                    "Please try again later."
+                );
+            } else {
+                // Use simulated data for local development
+                System.out.println("⚠️ Video processing service disabled - using simulated data");
+                response = createSimulatedResponse(user);
             }
-            
-            throw new RuntimeException(
-                "Could not process video. Processing service is not available. " +
-                "Please try again later."
-            );
         }
 
         // Step 6: Create new cliper with processing results
@@ -520,6 +529,31 @@ public class CliperService {
     private boolean languageExists(ATSProfile atsProfile, String languageName) {
         return atsProfile.getLanguages().stream()
             .anyMatch(lang -> lang.getName().equalsIgnoreCase(languageName.trim()));
+    }
+
+    /**
+     * Creates simulated response for local development
+     */
+    private VideoProcessingResponse createSimulatedResponse(User user) {
+        VideoProcessingResponse response = new VideoProcessingResponse();
+        
+        // Create simulated profile
+        VideoProcessingResponse.Profile profile = new VideoProcessingResponse.Profile();
+        profile.setName(user.getFirstName() + " " + user.getLastName());
+        profile.setProfession("Software Developer");
+        profile.setExperience("3+ years of experience in web development");
+        profile.setEducation("Computer Science Degree");
+        profile.setTechnologies("Java, Spring Boot, React, MongoDB");
+        profile.setLanguages("Spanish, English");
+        profile.setAchievements("Led team of 5 developers");
+        profile.setSoftSkills("Leadership, Communication, Problem Solving");
+        
+        response.setProfile(profile);
+        response.setTranscription("This is a simulated transcription for local development. " +
+            "The candidate introduces themselves and talks about their experience.");
+        
+        System.out.println("✅ Created simulated response for local development");
+        return response;
     }
 
     /**

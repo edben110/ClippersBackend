@@ -24,10 +24,10 @@ public class AIMatchingService {
 
     private final RestTemplate restTemplate;
 
-    @Value("${ai.matching.service.url:http://localhost:8000}")
+    @Value("${ai.matching.service.url}")
     private String aiServiceUrl;
 
-    @Value("${ai.matching.service.enabled:true}")
+    @Value("${ai.matching.service.enabled}")
     private boolean aiServiceEnabled;
 
     public AIMatchingService(RestTemplate restTemplate) {

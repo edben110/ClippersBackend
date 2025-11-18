@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -30,15 +31,18 @@ public class SecurityConfig {
 
     private final CustomUserDetailsService customUserDetailsService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final Environment environment;
 
     @Value("${cors.allowed.origins}")
     private String[] allowedOrigins;
 
     @Autowired
     public SecurityConfig(CustomUserDetailsService customUserDetailsService,
-                         JwtAuthenticationFilter jwtAuthenticationFilter) {
+                         JwtAuthenticationFilter jwtAuthenticationFilter,
+                         Environment environment) {
         this.customUserDetailsService = customUserDetailsService;
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.environment = environment;
     }
 
     @Bean
@@ -53,45 +57,57 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        boolean isDevelopment = Arrays.asList(environment.getActiveProfiles()).contains("dev") 
+                             || environment.getActiveProfiles().length == 0; // default profile is dev
+        
         http.cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                // Public endpoints
-                .requestMatchers("/api/auth/login").permitAll()
-                .requestMatchers("/api/auth/register").permitAll()
-                .requestMatchers("/api/auth/refresh").permitAll()
-                .requestMatchers("/api/auth/me").authenticated()
-                .requestMatchers("/api/public/**").permitAll()
-                .requestMatchers("/api/test/**").permitAll()
-                .requestMatchers("/api/clipers/public/**").permitAll()
-                .requestMatchers("/api/clipers/admin/clear-all").permitAll() // Temporal para pruebas
-                .requestMatchers("/api/clipers/admin/clear-all-data").permitAll() // Temporal para pruebas
-                .requestMatchers("/api/posts/cleanup-company-videos").permitAll() // Temporal para limpieza
-                .requestMatchers("/api/jobs/public/**").permitAll()
-                .requestMatchers("/api/posts/public/**").permitAll()
-                .requestMatchers("/uploads/videos/**").permitAll()
-                .requestMatchers("/uploads/images/**").permitAll()
-                .requestMatchers("/uploads/avatars/**").permitAll()
-                .requestMatchers("/actuator/health").permitAll()
-                .requestMatchers("/error").permitAll()
-                .requestMatchers("/").permitAll()
+            .authorizeHttpRequests(auth -> {
+                // Public endpoints - always accessible
+                auth.requestMatchers("/api/auth/login").permitAll()
+                    .requestMatchers("/api/auth/register").permitAll()
+                    .requestMatchers("/api/auth/refresh").permitAll()
+                    .requestMatchers("/api/auth/me").authenticated()
+                    .requestMatchers("/api/public/**").permitAll()
+                    .requestMatchers("/api/clipers/public/**").permitAll()
+                    .requestMatchers("/api/jobs/public/**").permitAll()
+                    .requestMatchers("/api/posts/public/**").permitAll()
+                    .requestMatchers("/uploads/videos/**").permitAll()
+                    .requestMatchers("/uploads/images/**").permitAll()
+                    .requestMatchers("/uploads/avatars/**").permitAll()
+                    .requestMatchers("/actuator/health").permitAll()
+                    .requestMatchers("/error").permitAll()
+                    .requestMatchers("/").permitAll();
+                
+                // Development-only endpoints (test & admin cleanup)
+                if (isDevelopment) {
+                    auth.requestMatchers("/api/test/**").permitAll()
+                        .requestMatchers("/api/clipers/admin/clear-all").permitAll()
+                        .requestMatchers("/api/clipers/admin/clear-all-data").permitAll()
+                        .requestMatchers("/api/posts/cleanup-company-videos").permitAll();
+                } else {
+                    // In production, these require ADMIN role
+                    auth.requestMatchers("/api/test/**").hasRole("ADMIN")
+                        .requestMatchers("/api/clipers/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/posts/cleanup-**").hasRole("ADMIN");
+                }
                 
                 // Admin only endpoints
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                
-                // Company specific endpoints
-                .requestMatchers("/api/jobs/create").hasRole("COMPANY")
-                .requestMatchers("/api/jobs/*/edit").hasRole("COMPANY")
-                .requestMatchers("/api/dashboard/**").hasRole("COMPANY")
-                
-                // Candidate specific endpoints
-                .requestMatchers("/api/clipers/upload").hasRole("CANDIDATE")
-                .requestMatchers("/api/profile/ats").hasRole("CANDIDATE")
-                
-                // All other endpoints require authentication
-                .anyRequest().authenticated()
-            );
+                auth.requestMatchers("/api/admin/**").hasRole("ADMIN")
+                    
+                    // Company specific endpoints
+                    .requestMatchers("/api/jobs/create").hasRole("COMPANY")
+                    .requestMatchers("/api/jobs/*/edit").hasRole("COMPANY")
+                    .requestMatchers("/api/dashboard/**").hasRole("COMPANY")
+                    
+                    // Candidate specific endpoints
+                    .requestMatchers("/api/clipers/upload").hasRole("CANDIDATE")
+                    .requestMatchers("/api/profile/ats").hasRole("CANDIDATE")
+                    
+                    // All other endpoints require authentication
+                    .anyRequest().authenticated();
+            });
 
         // Add JWT filter
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
