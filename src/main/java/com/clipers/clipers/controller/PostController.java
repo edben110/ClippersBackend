@@ -113,7 +113,7 @@ public class PostController {
             Files.copy(file.getInputStream(), filePath);
 
             // Crear URL completa con el dominio del backend
-            String baseUrl = "http://localhost:8080";
+            String baseUrl = "https://backend.clipers.pro";
             String imageUrl = baseUrl + "/uploads/images/" + filename;
 
             Map<String, String> response = new HashMap<>();
@@ -325,3 +325,4 @@ public class PostController {
         throw new RuntimeException("Usuario no autenticado");
     }
 }
+
