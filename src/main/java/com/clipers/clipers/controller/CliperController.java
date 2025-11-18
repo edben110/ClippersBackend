@@ -161,6 +161,7 @@ public class CliperController {
                         userDTO.setFirstName(user.getFirstName());
                         userDTO.setLastName(user.getLastName());
                         userDTO.setEmail(user.getEmail());
+                        userDTO.setProfileImage(user.getProfileImage());
                         dto.setUser(userDTO);
                     });
                     return dto;
@@ -195,6 +196,7 @@ public class CliperController {
                         userDTO.setFirstName(user.getFirstName());
                         userDTO.setLastName(user.getLastName());
                         userDTO.setEmail(user.getEmail());
+                        userDTO.setProfileImage(user.getProfileImage());
                         dto.setUser(userDTO);
                     });
                     return dto;
