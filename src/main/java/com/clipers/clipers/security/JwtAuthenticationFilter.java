@@ -79,6 +79,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             path.equals("/api/auth/refresh") ||
                             path.startsWith("/api/test/") ||
                             path.startsWith("/api/public/") ||
+                            path.startsWith("/api/stream/") || // Video streaming endpoint
                             path.startsWith("/uploads/") ||
                             path.startsWith("/actuator/health") ||
                             path.equals("/error") ||

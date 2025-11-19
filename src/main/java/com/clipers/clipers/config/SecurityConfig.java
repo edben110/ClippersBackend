@@ -73,6 +73,7 @@ public class SecurityConfig {
                     .requestMatchers("/api/clipers/public/**").permitAll()
                     .requestMatchers("/api/jobs/public/**").permitAll()
                     .requestMatchers("/api/posts/public/**").permitAll()
+                    .requestMatchers("/api/stream/**").permitAll() // Video streaming endpoint
                     .requestMatchers("/uploads/videos/**").permitAll()
                     .requestMatchers("/uploads/images/**").permitAll()
                     .requestMatchers("/uploads/avatars/**").permitAll()
