@@ -10,6 +10,7 @@ import com.clipers.clipers.repository.JobMatchRepository;
 import com.clipers.clipers.repository.JobRepository;
 import com.clipers.clipers.repository.UserRepository;
 import com.clipers.clipers.service.AIMatchingService;
+import com.clipers.clipers.service.AIMatchResultService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -28,6 +29,7 @@ public class AIController {
     private static final Logger logger = LoggerFactory.getLogger(AIController.class);
 
     private final AIMatchingService aiMatchingService;
+    private final AIMatchResultService aiMatchResultService;
     private final UserRepository userRepository;
     private final ATSProfileRepository atsProfileRepository;
     private final JobRepository jobRepository;
@@ -35,12 +37,14 @@ public class AIController {
 
     public AIController(
             AIMatchingService aiMatchingService,
+            AIMatchResultService aiMatchResultService,
             UserRepository userRepository,
             ATSProfileRepository atsProfileRepository,
             JobRepository jobRepository,
             JobMatchRepository jobMatchRepository
     ) {
         this.aiMatchingService = aiMatchingService;
+        this.aiMatchResultService = aiMatchResultService;
         this.userRepository = userRepository;
         this.atsProfileRepository = atsProfileRepository;
         this.jobRepository = jobRepository;
@@ -155,14 +159,22 @@ public class AIController {
     /**
      * Find best candidates for a job
      * Fetches all applicants for the job and ranks them using AI
+     * Results are persisted and can be retrieved after page refresh
      */
     @GetMapping("/match/job/{jobId}/candidates")
     @PreAuthorize("hasRole('COMPANY')")
     public ResponseEntity<BatchMatchResponseDTO> findBestCandidates(
             @PathVariable String jobId,
-            @RequestParam(defaultValue = "10") int limit
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(defaultValue = "false") boolean forceRefresh
     ) {
         logger.info("Finding best candidates for job {}", jobId);
+
+        // Check if we have saved results and should use them
+        if (!forceRefresh && aiMatchResultService.hasMatchResults(jobId)) {
+            logger.info("Returning saved match results for job {}", jobId);
+            return ResponseEntity.ok(getSavedMatchResults(jobId));
+        }
 
         // Fetch job
         Job job = jobRepository.findById(jobId)
@@ -209,7 +221,78 @@ public class AIController {
         logger.info("Performing AI matching for {} candidates", candidateDTOs.size());
         BatchMatchResponseDTO result = aiMatchingService.matchBatchCandidates(candidateDTOs, jobDTO);
         
+        // Save results to database for persistence
+        aiMatchResultService.saveBatchResults(result);
+        logger.info("Match results saved to database for job {}", jobId);
+        
         return ResponseEntity.ok(result);
+    }
+
+    /**
+     * Get saved match results for a job
+     * Returns previously calculated AI matching results
+     */
+    @GetMapping("/match/job/{jobId}/saved-results")
+    @PreAuthorize("hasRole('COMPANY')")
+    public ResponseEntity<BatchMatchResponseDTO> getSavedResults(@PathVariable String jobId) {
+        logger.info("Retrieving saved match results for job {}", jobId);
+        
+        if (!aiMatchResultService.hasMatchResults(jobId)) {
+            logger.warn("No saved results found for job {}", jobId);
+            return ResponseEntity.noContent().build();
+        }
+        
+        BatchMatchResponseDTO response = getSavedMatchResults(jobId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Delete saved match results for a job
+     * Forces recalculation on next request
+     */
+    @DeleteMapping("/match/job/{jobId}/saved-results")
+    @PreAuthorize("hasRole('COMPANY')")
+    public ResponseEntity<Void> deleteSavedResults(@PathVariable String jobId) {
+        logger.info("Deleting saved match results for job {}", jobId);
+        aiMatchResultService.deleteAllResultsForJob(jobId);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Helper method to convert saved results to DTO
+     */
+    private BatchMatchResponseDTO getSavedMatchResults(String jobId) {
+        List<com.clipers.clipers.entity.AIMatchResult> savedResults = 
+            aiMatchResultService.getMatchResultsForJob(jobId);
+        
+        if (savedResults.isEmpty()) {
+            return null;
+        }
+
+        // Convert to DTO
+        BatchMatchResponseDTO response = new BatchMatchResponseDTO();
+        
+        // Get metadata from first result
+        com.clipers.clipers.entity.AIMatchResult firstResult = savedResults.get(0);
+        response.setJobId(jobId);
+        
+        // Get job title
+        jobRepository.findById(jobId).ifPresent(job -> {
+            response.setJobTitle(job.getTitle());
+        });
+        
+        response.setTotalCandidates(firstResult.getTotalCandidatesInBatch());
+        response.setAverageScore(firstResult.getAverageScoreInBatch());
+        
+        // Convert results
+        List<RankedMatchResultDTO> matches = savedResults.stream()
+            .map(aiMatchResultService::convertToDTO)
+            .collect(Collectors.toList());
+        
+        response.setMatches(matches);
+        response.setTopSkillsMatched(new ArrayList<>()); // Could be enhanced
+        
+        return response;
     }
 
     /**
