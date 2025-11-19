@@ -112,6 +112,15 @@ public class PostService {
         Comment comment = new Comment(content, userId, postId);
         Comment savedComment = commentRepository.save(comment);
         
+        // Add comment ID to post's comment list
+        List<String> commentIds = post.getCommentIds();
+        if (commentIds == null) {
+            commentIds = new java.util.ArrayList<>();
+        }
+        commentIds.add(savedComment.getId());
+        post.setCommentIds(commentIds);
+        postRepository.save(post);
+        
         // Populate user information
         userRepository.findById(savedComment.getUserId()).ifPresent(user -> {
             savedComment.setUser(user);
@@ -196,6 +205,14 @@ public class PostService {
         // Verify the user owns the comment OR owns the post
         if (!comment.getUserId().equals(userId) && !post.getUserId().equals(userId)) {
             throw new RuntimeException("No tienes permiso para eliminar este comentario");
+        }
+        
+        // Remove comment ID from post's comment list
+        List<String> commentIds = post.getCommentIds();
+        if (commentIds != null) {
+            commentIds.remove(commentId);
+            post.setCommentIds(commentIds);
+            postRepository.save(post);
         }
         
         commentRepository.delete(comment);
