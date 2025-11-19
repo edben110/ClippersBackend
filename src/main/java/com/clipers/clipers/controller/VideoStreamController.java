@@ -38,9 +38,15 @@ public class VideoStreamController {
             @RequestHeader(value = "Range", required = false) String rangeHeader) {
         
         try {
-            Path videoPath = Paths.get(VIDEO_DIRECTORY + filename);
+            // Decode URL-encoded filename (handles spaces and special characters)
+            String decodedFilename = java.net.URLDecoder.decode(filename, "UTF-8");
+            Path videoPath = Paths.get(VIDEO_DIRECTORY + decodedFilename);
+            
+            System.out.println("Streaming video request: " + decodedFilename);
+            System.out.println("Full path: " + videoPath.toAbsolutePath());
             
             if (!Files.exists(videoPath)) {
+                System.err.println("Video file not found: " + videoPath.toAbsolutePath());
                 return ResponseEntity.notFound().build();
             }
 
