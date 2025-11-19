@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -44,6 +45,9 @@ import com.clipers.clipers.service.PostService;
 public class PostController {
 
     private final PostService postService;
+
+    @Value("${file.upload.base.url:http://localhost:8080}")
+    private String fileUploadBaseUrl;
 
     @Autowired
     public PostController(PostService postService) {
@@ -112,9 +116,8 @@ public class PostController {
             Path filePath = uploadPath.resolve(filename);
             Files.copy(file.getInputStream(), filePath);
 
-            // Crear URL completa con el dominio del backend
-            String baseUrl = "http://localhost:8080";
-            String imageUrl = baseUrl + "/uploads/images/" + filename;
+            // Crear URL completa con el dominio del backend desde variable de entorno
+            String imageUrl = fileUploadBaseUrl + "/uploads/images/" + filename;
 
             Map<String, String> response = new HashMap<>();
             response.put("imageUrl", imageUrl);
