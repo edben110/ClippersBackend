@@ -83,13 +83,29 @@ public class PostService {
         
         if (existingLike.isPresent()) {
             // Remove like
-            postLikeRepository.delete(existingLike.get());
+            PostLike like = existingLike.get();
+            postLikeRepository.delete(like);
             post.setLikes(post.getLikes() - 1);
+            
+            // Remove like ID from post's like list
+            List<String> postLikeIds = post.getPostLikeIds();
+            if (postLikeIds != null) {
+                postLikeIds.remove(like.getId());
+                post.setPostLikeIds(postLikeIds);
+            }
         } else {
             // Add like
             PostLike like = new PostLike(userId, postId);
-            postLikeRepository.save(like);
+            PostLike savedLike = postLikeRepository.save(like);
             post.setLikes(post.getLikes() + 1);
+            
+            // Add like ID to post's like list
+            List<String> postLikeIds = post.getPostLikeIds();
+            if (postLikeIds == null) {
+                postLikeIds = new java.util.ArrayList<>();
+            }
+            postLikeIds.add(savedLike.getId());
+            post.setPostLikeIds(postLikeIds);
             
             // Notify post owner (Observer pattern implícito)
             if (!post.getUserId().equals(userId)) {
