@@ -22,7 +22,6 @@ import java.util.Optional;
  * Coordina las interacciones entre posts, comentarios y likes
  */
 @Service
-@Transactional
 public class PostService {
 
     private final PostRepository postRepository;
