@@ -15,8 +15,10 @@ public class JobMatch {
     @Id
     private String id;
 
+    @org.springframework.data.mongodb.core.index.Indexed
     private String jobId;
 
+    @org.springframework.data.mongodb.core.index.Indexed
     private String userId;
 
     @NotNull

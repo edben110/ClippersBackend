@@ -20,9 +20,11 @@ public class Comment {
     private String content;
 
     @JsonIgnore
+    @org.springframework.data.mongodb.core.index.Indexed
     private String userId; // Referencia al usuario
 
     @JsonIgnore
+    @org.springframework.data.mongodb.core.index.Indexed
     private String postId; // Referencia al post
 
     @Transient

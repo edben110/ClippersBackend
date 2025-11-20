@@ -25,6 +25,7 @@ public class Post {
 
     private PostType type = PostType.TEXT;
 
+    @org.springframework.data.mongodb.core.index.Indexed
     private String userId; // Referencia al usuario
 
     @org.springframework.data.annotation.Transient

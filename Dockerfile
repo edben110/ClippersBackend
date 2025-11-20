@@ -51,8 +51,8 @@ USER spring:spring
 # Exponer el puerto
 EXPOSE 8080
 
-# Variables de entorno
-ENV JAVA_OPTS="-Xms512m -Xmx1024m"
+# Variables de entorno optimizadas para VPS pequeño
+ENV JAVA_OPTS="-Xms256m -Xmx512m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+UseStringDeduplication -Djava.security.egd=file:/dev/./urandom"
 
 # Comando de inicio
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
