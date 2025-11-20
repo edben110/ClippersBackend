@@ -9,29 +9,31 @@ RUN apt-get update && apt-get install -y maven && rm -rf /var/lib/apt/lists/*
 # Directorio de trabajo
 WORKDIR /app
 
-# Copiar configuración de Maven
+# 1️⃣ Copiar solo archivos de dependencias primero (mejor cache)
 COPY pom.xml .
+COPY .mvn .mvn
+COPY mvnw .
 
-# Descargar dependencias (esta capa se cachea si no cambia pom.xml)
+# 2️⃣ Descargar dependencias (esta capa se cachea si no cambia pom.xml)
 RUN mvn dependency:go-offline -B
 
-# Copiar el código fuente
+# 3️⃣ Copiar el código fuente después
 COPY src ./src
 
-# Compilar el proyecto y generar el .jar (sin ejecutar tests)
+# 4️⃣ Compilar el proyecto y generar el .jar (sin ejecutar tests)
 RUN mvn clean package -DskipTests
 
 
 # ==========================
-# 🚀 Etapa de producción (Runtime)
+# 🚀 Etapa de producción (Runtime) - Optimizada
 # ==========================
-FROM eclipse-temurin:21-jdk
+FROM eclipse-temurin:21-jre-alpine
 
-# Instalar curl para health checks
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+# Instalar curl para health checks (Alpine es ~150MB vs ~900MB)
+RUN apk add --no-cache curl
 
 # Crear usuario no root por seguridad
-RUN addgroup --system spring && adduser --system spring --ingroup spring
+RUN addgroup -S spring && adduser -S spring -G spring
 
 # Directorio de la aplicación
 WORKDIR /app
@@ -43,7 +45,7 @@ RUN mkdir -p /app/uploads/images \
     chown -R spring:spring /app
 
 # Copiar el jar desde la etapa de build
-COPY --from=build /app/target/*.jar app.jar
+COPY --from=build --chown=spring:spring /app/target/*.jar app.jar
 
 # Cambiar al usuario no root
 USER spring:spring
