@@ -39,7 +39,6 @@ public class AIMatchingService {
      */
     public SingleMatchResponseDTO matchSingleCandidate(CandidateDTO candidate, JobDTO job) {
         if (!aiServiceEnabled) {
-            logger.warn("AI Matching service is disabled");
             return createFallbackSingleMatch(candidate, job);
         }
 
@@ -54,20 +53,13 @@ public class AIMatchingService {
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<BatchMatchRequestDTO> entity = new HttpEntity<>(request, headers);
 
-            logger.info("Calling AI service for single match: candidate={}, job={}", 
-                       candidate.getId(), job.getId());
-
             ResponseEntity<SingleMatchResponseDTO> response = restTemplate.postForEntity(
                 url, entity, SingleMatchResponseDTO.class
             );
 
-            logger.info("AI match completed successfully: score={}", 
-                       response.getBody().getCompatibilityScore());
-
             return response.getBody();
 
         } catch (Exception e) {
-            logger.error("Error calling AI matching service: {}", e.getMessage(), e);
             return createFallbackSingleMatch(candidate, job);
         }
     }
@@ -78,7 +70,6 @@ public class AIMatchingService {
      */
     public BatchMatchResponseDTO matchBatchCandidates(List<CandidateDTO> candidates, JobDTO job) {
         if (!aiServiceEnabled) {
-            logger.warn("AI Matching service is disabled");
             return createFallbackBatchMatch(candidates, job);
         }
 
@@ -93,21 +84,13 @@ public class AIMatchingService {
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<BatchMatchRequestDTO> entity = new HttpEntity<>(request, headers);
 
-            logger.info("Calling AI service for batch match: {} candidates, job={}", 
-                       candidates.size(), job.getId());
-
             ResponseEntity<BatchMatchResponseDTO> response = restTemplate.postForEntity(
                 url, entity, BatchMatchResponseDTO.class
             );
 
-            logger.info("Batch match completed: total={}, avg_score={}", 
-                       response.getBody().getTotalCandidates(),
-                       response.getBody().getAverageScore());
-
             return response.getBody();
 
         } catch (Exception e) {
-            logger.error("Error calling AI batch matching service: {}", e.getMessage(), e);
             return createFallbackBatchMatch(candidates, job);
         }
     }
@@ -117,7 +100,6 @@ public class AIMatchingService {
      */
     public ExplainMatchResponseDTO explainMatch(CandidateDTO candidate, JobDTO job, boolean includeSuggestions) {
         if (!aiServiceEnabled) {
-            logger.warn("AI Matching service is disabled");
             return createFallbackExplanation(candidate, job);
         }
 
@@ -133,9 +115,6 @@ public class AIMatchingService {
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<ExplainMatchRequestDTO> entity = new HttpEntity<>(request, headers);
 
-            logger.info("Calling AI service for match explanation: candidate={}, job={}", 
-                       candidate.getId(), job.getId());
-
             ResponseEntity<ExplainMatchResponseDTO> response = restTemplate.postForEntity(
                 url, entity, ExplainMatchResponseDTO.class
             );
@@ -143,7 +122,6 @@ public class AIMatchingService {
             return response.getBody();
 
         } catch (Exception e) {
-            logger.error("Error calling AI explain service: {}", e.getMessage(), e);
             return createFallbackExplanation(candidate, job);
         }
     }
@@ -159,7 +137,6 @@ public class AIMatchingService {
             );
             return response.getBody();
         } catch (Exception e) {
-            logger.error("AI service health check failed: {}", e.getMessage());
             HealthResponseDTO health = new HealthResponseDTO();
             health.setStatus("unhealthy");
             health.setMessage("AI service unavailable: " + e.getMessage());
