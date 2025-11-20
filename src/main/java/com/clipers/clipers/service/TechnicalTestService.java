@@ -27,6 +27,7 @@ public class TechnicalTestService {
     private final TechnicalTestRepository technicalTestRepository;
     private final JobRepository jobRepository;
     private final UserRepository userRepository;
+    private final com.clipers.clipers.repository.CompanyRepository companyRepository;
     private final NotificationService notificationService;
     private final RestTemplate restTemplate;
     
@@ -37,11 +38,13 @@ public class TechnicalTestService {
     public TechnicalTestService(TechnicalTestRepository technicalTestRepository,
                                JobRepository jobRepository,
                                UserRepository userRepository,
+                               com.clipers.clipers.repository.CompanyRepository companyRepository,
                                NotificationService notificationService,
                                RestTemplate restTemplate) {
         this.technicalTestRepository = technicalTestRepository;
         this.jobRepository = jobRepository;
         this.userRepository = userRepository;
+        this.companyRepository = companyRepository;
         this.notificationService = notificationService;
         this.restTemplate = restTemplate;
     }
@@ -59,17 +62,42 @@ public class TechnicalTestService {
             throw new RuntimeException("Technical test already sent to this candidate");
         }
         
+        // Get company name
+        String companyName = getCompanyName(companyId);
+        
         // Generate test from microservice
         String testMarkdown = generateTestFromMicroservice(job);
         
         // Create and save technical test
         TechnicalTest test = new TechnicalTest(jobId, candidateId, companyId, testMarkdown);
+        test.setCompanyName(companyName);
+        test.setJobTitle(job.getTitle());
         test = technicalTestRepository.save(test);
         
         // TODO: Send notification to candidate
         // notificationService.notifyTechnicalTestSent(candidateId, jobId, test.getId());
         
         return test;
+    }
+    
+    private String getCompanyName(String companyId) {
+        try {
+            // Buscar la empresa por ID
+            Optional<com.clipers.clipers.entity.Company> company = companyRepository.findById(companyId);
+            if (company.isPresent()) {
+                return company.get().getName();
+            }
+            
+            // Si no se encuentra por ID, buscar por userId
+            Optional<com.clipers.clipers.entity.Company> companyByUser = companyRepository.findByUserId(companyId);
+            if (companyByUser.isPresent()) {
+                return companyByUser.get().getName();
+            }
+            
+            return "Empresa";
+        } catch (Exception e) {
+            return "Empresa";
+        }
     }
     
     private String generateTestFromMicroservice(Job job) {
@@ -129,8 +157,10 @@ public class TechnicalTestService {
     }
     
     private String generateDefaultTest(Job job) {
+        String companyName = getCompanyName(job.getCompanyId());
         StringBuilder test = new StringBuilder();
         test.append("# Prueba Técnica - ").append(job.getTitle()).append("\n\n");
+        test.append("## 🏢 Empresa: ").append(companyName).append("\n\n");
         test.append("## Información General\n");
         test.append("- **Duración estimada:** 2-3 horas\n");
         test.append("- **Posición:** ").append(job.getTitle()).append("\n");

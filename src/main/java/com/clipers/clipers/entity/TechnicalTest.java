@@ -15,9 +15,13 @@ public class TechnicalTest {
     private String jobId;
     private String candidateId;
     private String companyId;
-    private String testMarkdown;
+    private String companyName; // Nombre de la empresa
+    private String jobTitle; // Título del puesto
+    private String testMarkdown; // Formato antiguo (mantener compatibilidad)
+    private String testJson; // Nuevo formato estructurado JSON
     private TestStatus status;
-    private String candidateResponse; // Respuesta del candidato
+    private String candidateResponse; // Respuesta del candidato (formato antiguo)
+    private String candidateAnswersJson; // Respuestas estructuradas JSON
     private Integer score; // Puntuación de la prueba
     private String feedback; // Retroalimentación de la empresa
     
@@ -139,5 +143,37 @@ public class TechnicalTest {
     
     public void setFeedback(String feedback) {
         this.feedback = feedback;
+    }
+    
+    public String getCompanyName() {
+        return companyName;
+    }
+    
+    public void setCompanyName(String companyName) {
+        this.companyName = companyName;
+    }
+    
+    public String getJobTitle() {
+        return jobTitle;
+    }
+    
+    public void setJobTitle(String jobTitle) {
+        this.jobTitle = jobTitle;
+    }
+    
+    public String getTestJson() {
+        return testJson;
+    }
+    
+    public void setTestJson(String testJson) {
+        this.testJson = testJson;
+    }
+    
+    public String getCandidateAnswersJson() {
+        return candidateAnswersJson;
+    }
+    
+    public void setCandidateAnswersJson(String candidateAnswersJson) {
+        this.candidateAnswersJson = candidateAnswersJson;
     }
 }
