@@ -73,7 +73,10 @@ logs/
 .env.development.local
 .env.test.local
 .env.production.local
-.env.example
+# Templates NO están en gitignore:
+# .env.example - template de ejemplo
+# .env.production - template de producción
+# .env.docker - template para docker-compose
 
 # Documentation files (local only)
 POSTGRESQL_17_SETUP.md

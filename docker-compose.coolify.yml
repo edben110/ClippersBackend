@@ -5,15 +5,18 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:17-alpine
-    container_name: clipers-postgres
+  mongodb:
+    image: mongo:7.0
+    container_name: clipers-mongodb
     environment:
-      POSTGRES_DB: clipers_db
-      POSTGRES_USER: clipers_user
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGODB_DATABASE}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U clipers_user -d clipers_db"]
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -27,26 +30,33 @@ services:
       dockerfile: Dockerfile
     container_name: clipers-backend
     environment:
-      SERVER_PORT: 8080
-      DATABASE_URL: jdbc:postgresql://postgres:5432/clipers_db
-      DATABASE_USERNAME: clipers_user
-      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_PROFILE: ${SPRING_PROFILE}
+      SERVER_PORT: ${SERVER_PORT}
+      MONGODB_URI: ${MONGODB_URI}
+      MONGODB_DATABASE: ${MONGODB_DATABASE}
       JWT_SECRET: ${JWT_SECRET}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
-      FRONTEND_URL: ${FRONTEND_URL}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+      MAX_FILE_SIZE: ${MAX_FILE_SIZE}
+      MAX_REQUEST_SIZE: ${MAX_REQUEST_SIZE}
+      FILE_UPLOAD_DIR: ${FILE_UPLOAD_DIR}
       FILE_UPLOAD_BASE_URL: ${FILE_UPLOAD_BASE_URL}
-      JPA_SHOW_SQL: false
-      LOG_LEVEL_CLIPERS: INFO
-      LOG_LEVEL_SECURITY: WARN
-      # Configuración específica para Coolify
-      spring.jpa.database-platform: org.hibernate.dialect.PostgreSQLDialect
-      spring.jpa.hibernate.ddl-auto: validate
+      FRONTEND_URL: ${FRONTEND_URL}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      AI_MATCHING_SERVICE_URL: ${AI_MATCHING_SERVICE_URL}
+      AI_MATCHING_SERVICE_ENABLED: ${AI_MATCHING_SERVICE_ENABLED}
+      AI_MATCHING_SERVICE_TIMEOUT: ${AI_MATCHING_SERVICE_TIMEOUT}
+      VIDEO_PROCESSING_SERVICE_URL: ${VIDEO_PROCESSING_SERVICE_URL}
+      VIDEO_PROCESSING_SERVICE_ENABLED: ${VIDEO_PROCESSING_SERVICE_ENABLED}
+      LOG_LEVEL_CLIPERS: ${LOG_LEVEL_CLIPERS}
+      LOG_LEVEL_SECURITY: ${LOG_LEVEL_SECURITY}
+      MANAGEMENT_ENDPOINTS: ${MANAGEMENT_ENDPOINTS}
+      HEALTH_SHOW_DETAILS: ${HEALTH_SHOW_DETAILS}
     ports:
       - "8080:8080"
     volumes:
       - uploads_data:/app/uploads
     depends_on:
-      postgres:
+      mongodb:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/api/test/health || exit 1"]
@@ -58,7 +68,8 @@ services:
       - clipers-network
 
 volumes:
-  postgres_data:
+  mongodb_data:
+  mongodb_config:
   uploads_data:
 
 networks:

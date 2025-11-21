@@ -3,6 +3,7 @@ package com.clipers.clipers.controller;
 import com.clipers.clipers.entity.Cliper;
 import com.clipers.clipers.service.CliperService;
 import com.clipers.clipers.dto.CliperDTO;
+import com.clipers.clipers.dto.UserDTO;
 import com.clipers.clipers.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -151,7 +152,20 @@ public class CliperController {
         Page<Cliper> clipersPage = cliperService.findProcessedClipers(pageable);
 
         List<CliperDTO> cliperDTOs = clipersPage.getContent().stream()
-                .map(CliperDTO::new)
+                .map(cliper -> {
+                    CliperDTO dto = new CliperDTO(cliper);
+                    // Enrich with user info
+                    userRepository.findById(cliper.getUserId()).ifPresent(user -> {
+                        UserDTO userDTO = new UserDTO();
+                        userDTO.setId(user.getId());
+                        userDTO.setFirstName(user.getFirstName());
+                        userDTO.setLastName(user.getLastName());
+                        userDTO.setEmail(user.getEmail());
+                        userDTO.setProfileImage(user.getProfileImage());
+                        dto.setUser(userDTO);
+                    });
+                    return dto;
+                })
                 .toList();
 
         Map<String, Object> response = new HashMap<>();
@@ -173,7 +187,20 @@ public class CliperController {
         Page<Cliper> clipersPage = cliperService.findProcessedClipers(pageable);
 
         List<CliperDTO> cliperDTOs = clipersPage.getContent().stream()
-                .map(CliperDTO::new)
+                .map(cliper -> {
+                    CliperDTO dto = new CliperDTO(cliper);
+                    // Enrich with user info
+                    userRepository.findById(cliper.getUserId()).ifPresent(user -> {
+                        UserDTO userDTO = new UserDTO();
+                        userDTO.setId(user.getId());
+                        userDTO.setFirstName(user.getFirstName());
+                        userDTO.setLastName(user.getLastName());
+                        userDTO.setEmail(user.getEmail());
+                        userDTO.setProfileImage(user.getProfileImage());
+                        dto.setUser(userDTO);
+                    });
+                    return dto;
+                })
                 .toList();
 
         Map<String, Object> response = new HashMap<>();
@@ -208,11 +235,14 @@ public class CliperController {
     public ResponseEntity<CliperDTO> updateCliper(
             @PathVariable String id, @RequestBody Map<String, String> request) {
         try {
+            String userId = getCurrentUserId();
             String title = request.get("title");
             String description = request.get("description");
 
-            Cliper updatedCliper = cliperService.updateCliper(id, title, description);
+            Cliper updatedCliper = cliperService.updateCliper(id, userId, title, description);
             return ResponseEntity.ok(new CliperDTO(updatedCliper));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(403).build(); // Forbidden
         } catch (Exception e) {
             throw new RuntimeException("Error al actualizar cliper: " + e.getMessage(), e);
         }
@@ -222,8 +252,11 @@ public class CliperController {
     @PreAuthorize("hasRole('CANDIDATE')")
     public ResponseEntity<Void> deleteCliper(@PathVariable String id) {
         try {
-            cliperService.deleteCliper(id);
+            String userId = getCurrentUserId();
+            cliperService.deleteCliper(id, userId);
             return ResponseEntity.ok().build();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(403).build(); // Forbidden
         } catch (Exception e) {
             throw new RuntimeException("Error al eliminar cliper: " + e.getMessage(), e);
         }
@@ -255,14 +288,23 @@ public class CliperController {
 
     private String saveVideoFile(MultipartFile videoFile) {
         try {
-            // Crear directorio si no existe
-            Path uploadDir = Paths.get("./uploads/videos");
+            // Crear directorio si no existe - usar ruta absoluta
+            Path uploadDir = Paths.get("uploads/videos").toAbsolutePath();
             if (!Files.exists(uploadDir)) {
                 Files.createDirectories(uploadDir);
             }
 
+            // Sanitizar nombre de archivo - eliminar espacios y caracteres especiales
+            String originalFilename = videoFile.getOriginalFilename();
+            if (originalFilename == null) {
+                originalFilename = "video.mp4";
+            }
+            String sanitizedFilename = originalFilename
+                .replaceAll("[^a-zA-Z0-9.-]", "_") // Reemplazar caracteres especiales con guión bajo
+                .replaceAll("_+", "_"); // Reemplazar múltiples guiones bajos con uno solo
+            
             // Generar nombre único para el archivo
-            String fileName = "video_" + System.currentTimeMillis() + "_" + videoFile.getOriginalFilename();
+            String fileName = "video_" + System.currentTimeMillis() + "_" + sanitizedFilename;
             Path filePath = uploadDir.resolve(fileName);
 
             // Guardar el archivo
@@ -278,6 +320,61 @@ public class CliperController {
     private Integer extractVideoDuration(MultipartFile videoFile) {
         // Simular extracción de duración
         // En producción, usaría FFmpeg para obtener la duración real
-        return 30 + (int)(Math.random() * 120); // 30-150 segundos
+        // Generar duración entre 15-120 segundos (válido según validación)
+        return 15 + (int)(Math.random() * 105); // 15-120 segundos
+    }
+
+    // Like/Unlike endpoints
+    @PostMapping("/{id}/like")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, Object>> toggleLike(@PathVariable String id) {
+        try {
+            String userId = getCurrentUserId();
+            Cliper cliper = cliperService.toggleLike(id, userId);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("liked", cliper.isLikedBy(userId));
+            response.put("likesCount", cliper.getLikesCount());
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            throw new RuntimeException("Error al dar like: " + e.getMessage(), e);
+        }
+    }
+
+    // Comment endpoints
+    @PostMapping("/{id}/comments")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<CliperDTO> addComment(
+            @PathVariable String id,
+            @RequestBody Map<String, Object> request) {
+        try {
+            String userId = getCurrentUserId();
+            String text = (String) request.get("text");
+            
+            // Get user name
+            String userName = userRepository.findById(userId)
+                    .map(user -> user.getFirstName() + " " + user.getLastName())
+                    .orElse("Usuario");
+            
+            Cliper cliper = cliperService.addComment(id, userId, userName, text);
+            return ResponseEntity.ok(new CliperDTO(cliper));
+        } catch (Exception e) {
+            throw new RuntimeException("Error al agregar comentario: " + e.getMessage(), e);
+        }
+    }
+
+    @DeleteMapping("/{cliperId}/comments/{commentId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<CliperDTO> deleteComment(
+            @PathVariable String cliperId,
+            @PathVariable String commentId) {
+        try {
+            String userId = getCurrentUserId();
+            Cliper cliper = cliperService.deleteComment(cliperId, commentId, userId);
+            return ResponseEntity.ok(new CliperDTO(cliper));
+        } catch (Exception e) {
+            throw new RuntimeException("Error al eliminar comentario: " + e.getMessage(), e);
+        }
     }
 }

@@ -22,7 +22,6 @@ import java.util.Optional;
  * Coordina las interacciones entre posts, comentarios y likes
  */
 @Service
-@Transactional
 public class PostService {
 
     private final PostRepository postRepository;
@@ -83,13 +82,29 @@ public class PostService {
         
         if (existingLike.isPresent()) {
             // Remove like
-            postLikeRepository.delete(existingLike.get());
+            PostLike like = existingLike.get();
+            postLikeRepository.delete(like);
             post.setLikes(post.getLikes() - 1);
+            
+            // Remove like ID from post's like list
+            List<String> postLikeIds = post.getPostLikeIds();
+            if (postLikeIds != null) {
+                postLikeIds.remove(like.getId());
+                post.setPostLikeIds(postLikeIds);
+            }
         } else {
             // Add like
             PostLike like = new PostLike(userId, postId);
-            postLikeRepository.save(like);
+            PostLike savedLike = postLikeRepository.save(like);
             post.setLikes(post.getLikes() + 1);
+            
+            // Add like ID to post's like list
+            List<String> postLikeIds = post.getPostLikeIds();
+            if (postLikeIds == null) {
+                postLikeIds = new java.util.ArrayList<>();
+            }
+            postLikeIds.add(savedLike.getId());
+            post.setPostLikeIds(postLikeIds);
             
             // Notify post owner (Observer pattern implícito)
             if (!post.getUserId().equals(userId)) {
@@ -111,6 +126,15 @@ public class PostService {
         
         Comment comment = new Comment(content, userId, postId);
         Comment savedComment = commentRepository.save(comment);
+        
+        // Add comment ID to post's comment list
+        List<String> commentIds = post.getCommentIds();
+        if (commentIds == null) {
+            commentIds = new java.util.ArrayList<>();
+        }
+        commentIds.add(savedComment.getId());
+        post.setCommentIds(commentIds);
+        postRepository.save(post);
         
         // Populate user information
         userRepository.findById(savedComment.getUserId()).ifPresent(user -> {
@@ -196,6 +220,14 @@ public class PostService {
         // Verify the user owns the comment OR owns the post
         if (!comment.getUserId().equals(userId) && !post.getUserId().equals(userId)) {
             throw new RuntimeException("No tienes permiso para eliminar este comentario");
+        }
+        
+        // Remove comment ID from post's comment list
+        List<String> commentIds = post.getCommentIds();
+        if (commentIds != null) {
+            commentIds.remove(commentId);
+            post.setCommentIds(commentIds);
+            postRepository.save(post);
         }
         
         commentRepository.delete(comment);

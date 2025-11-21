@@ -3,58 +3,75 @@ package com.clipers.clipers.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class VideoProcessingResponse {
-    @JsonProperty("transcripcion")
-    private String transcription;
+    @JsonProperty("cv_profile")
+    private String cvProfile;
 
-    @JsonProperty("perfil")
-    private Profile profile;
+    @JsonProperty("profile_data")
+    private Profile profileData;
 
     public VideoProcessingResponse() {}
 
-    public VideoProcessingResponse(String transcription, Profile profile) {
-        this.transcription = transcription;
-        this.profile = profile;
+    public VideoProcessingResponse(String cvProfile, Profile profileData) {
+        this.cvProfile = cvProfile;
+        this.profileData = profileData;
     }
 
+    public String getCvProfile() {
+        return cvProfile;
+    }
+
+    public void setCvProfile(String cvProfile) {
+        this.cvProfile = cvProfile;
+    }
+
+    public Profile getProfileData() {
+        return profileData;
+    }
+
+    public void setProfileData(Profile profileData) {
+        this.profileData = profileData;
+    }
+
+    // Mantener compatibilidad con código existente
     public String getTranscription() {
-        return transcription;
+        return cvProfile;
     }
 
     public void setTranscription(String transcription) {
-        this.transcription = transcription;
+        this.cvProfile = transcription;
     }
 
     public Profile getProfile() {
-        return profile;
+        return profileData;
     }
 
     public void setProfile(Profile profile) {
-        this.profile = profile;
+        this.profileData = profile;
     }
 
     public static class Profile {
-        @JsonProperty("nombre")
+        @JsonProperty("name")
         private Object name;
 
-        @JsonProperty("profesion")
+        @JsonProperty("profession")
         private Object profession;
 
-        @JsonProperty("experiencia")
+        @JsonProperty("experience")
         private Object experience;
 
-        @JsonProperty("educacion")
+        @JsonProperty("education")
         private Object education;
 
-        @JsonProperty("tecnologias")
+        @JsonProperty("technologies")
         private Object technologies;
 
-        @JsonProperty("idiomas")
+        @JsonProperty("languages")
         private Object languages;
 
-        @JsonProperty("logros")
+        @JsonProperty("achievements")
         private Object achievements;
 
-        @JsonProperty("habilidades_blandas")
+        @JsonProperty("soft_skills")
         private Object softSkills;
 
         public Profile() {}

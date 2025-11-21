@@ -1,32 +1,28 @@
 {
   "name": "Clipers Backend",
-  "description": "Spring Boot API for Clipers social network platform",
-  "type": "docker",
+  "description": "Spring Boot API for Clipers - Video CV Social Network",
+  "type": "dockerfile",
+  "dockerfile": "Dockerfile",
   "port": 8080,
   "healthcheck": {
     "enabled": true,
-    "path": "/api/test/health",
+    "path": "/actuator/health",
     "interval": 30,
     "timeout": 10,
-    "retries": 3
+    "retries": 3,
+    "start_period": 60
   },
-  "environment": {
-    "SPRING_PROFILES_ACTIVE": "coolify",
-    "SERVER_PORT": "8080",
-    "DATABASE_URL": "postgresql://postgres-service:5432/clipers_db",
-    "DATABASE_USERNAME": "clipers_user",
-    "DATABASE_PASSWORD": "tu_password_seguro",
-    "JWT_SECRET": "tu_jwt_secret_muy_largo_y_seguro_de_al_menos_64_caracteres",
-    "CORS_ALLOWED_ORIGINS": "https://tu-frontend.coolify.app,http://localhost:3000",
-    "REDIS_HOST": "redis-service",
-    "REDIS_PORT": "6379",
-    "RABBITMQ_HOST": "rabbitmq-service",
-    "RABBITMQ_PORT": "5672",
-    "RABBITMQ_USERNAME": "clipers",
-    "RABBITMQ_PASSWORD": "clipers123"
-  },
+  "build_args": {},
+  "volumes": [
+    {
+      "name": "uploads",
+      "mount_path": "/app/uploads",
+      "size": "10Gi"
+    }
+  ],
   "resources": {
     "memory": "1Gi",
-    "cpu": "1"
+    "cpu": "1",
+    "memory_reservation": "512Mi"
   }
 }

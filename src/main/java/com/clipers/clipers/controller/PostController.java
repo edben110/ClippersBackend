@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -44,6 +45,9 @@ import com.clipers.clipers.service.PostService;
 public class PostController {
 
     private final PostService postService;
+
+    @Value("${file.upload.base.url:http://localhost:8080}")
+    private String fileUploadBaseUrl;
 
     @Autowired
     public PostController(PostService postService) {
@@ -95,8 +99,8 @@ public class PostController {
                 throw new RuntimeException("Solo se permiten archivos de imagen");
             }
 
-            // Crear directorio si no existe
-            Path uploadPath = Paths.get("uploads", "images");
+            // Crear directorio si no existe - usar ruta absoluta
+            Path uploadPath = Paths.get("uploads", "images").toAbsolutePath();
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
             }
@@ -106,15 +110,20 @@ public class PostController {
             String extension = originalFilename != null && originalFilename.contains(".")
                 ? originalFilename.substring(originalFilename.lastIndexOf("."))
                 : ".jpg";
+            
+            // Sanitizar extensión
+            extension = extension.replaceAll("[^a-zA-Z0-9.-]", "").toLowerCase();
+            
             String filename = UUID.randomUUID().toString() + extension;
 
             // Guardar archivo
             Path filePath = uploadPath.resolve(filename);
             Files.copy(file.getInputStream(), filePath);
+            
+            System.out.println("✅ Image saved to: " + filePath.toAbsolutePath());
 
-            // Crear URL completa con el dominio del backend
-            String baseUrl = "https://backend.clipers.pro";
-            String imageUrl = baseUrl + "/uploads/images/" + filename;
+            // Crear URL completa con el dominio del backend desde variable de entorno
+            String imageUrl = fileUploadBaseUrl + "/uploads/images/" + filename;
 
             Map<String, String> response = new HashMap<>();
             response.put("imageUrl", imageUrl);

@@ -12,9 +12,11 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         // Servir archivos estáticos desde la carpeta uploads
+        // Optimizado para reducir carga del servidor
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations("file:./uploads/")
-                .setCachePeriod(3600); // Cache por 1 hora
+                .setCachePeriod(86400) // Cache por 24 horas (reduce peticiones)
+                .resourceChain(true); // Habilita optimizaciones
     }
 
     @Bean
