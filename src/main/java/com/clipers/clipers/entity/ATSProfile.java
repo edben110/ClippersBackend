@@ -47,7 +47,7 @@ public class ATSProfile {
         this.userId = userId;
     }
 
-    // Builder Pattern implementado implícitamente como métodos fluidos
+    // Builder Pattern implemented implicitly as fluent methods
     public ATSProfile withSummary(String summary) {
         this.summary = summary;
         return this;
@@ -106,7 +106,7 @@ public class ATSProfile {
         return !education.isEmpty() || !experience.isEmpty() || !skills.isEmpty();
     }
 
-    // Método para generar perfil automáticamente desde Cliper (Strategy implícito)
+    // Method to automatically generate profile from Cliper (Strategy pattern implicit)
     public void generateFromCliperData(String transcription, List<String> detectedSkills) {
         if (transcription != null && !transcription.isEmpty()) {
             this.summary = generateSummaryFromTranscription(transcription);
@@ -120,7 +120,7 @@ public class ATSProfile {
     }
 
     private String generateSummaryFromTranscription(String transcription) {
-        // Estrategia simple de generación de resumen
+        // Simple summary generation strategy
         if (transcription.length() > 200) {
             return transcription.substring(0, 200) + "...";
         }

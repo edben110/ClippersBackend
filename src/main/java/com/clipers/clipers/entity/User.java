@@ -16,8 +16,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * Entidad User que implementa Factory Method implícitamente
- * para la creación de diferentes tipos de usuarios
+ * User entity that implements Factory Method pattern implicitly
+ * for creating different types of users
  */
 @Document(collection = "users")
 public class User {
@@ -78,7 +78,7 @@ public class User {
         this.role = role;
     }
 
-    // Factory Methods implementados implícitamente
+    // Factory Methods implemented implicitly
     public static User createCandidate(String email, String rawPassword, String firstName, 
                                      String lastName, PasswordEncoder passwordEncoder) {
         if (firstName == null || lastName == null) {
@@ -105,7 +105,7 @@ public class User {
         return new User(email, encodedPassword, fName, lName, Role.ADMIN);
     }
 
-    // Template Method para validación de usuario
+    // Template Method for user validation
     public boolean isValidForRole() {
         if (!isBasicInfoValid()) {
             return false;

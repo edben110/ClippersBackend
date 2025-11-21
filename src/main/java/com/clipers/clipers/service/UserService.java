@@ -16,7 +16,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
- * Servicio que implementa Template Method y Factory Method implícitamente
+ * Service that implements Template Method and Factory Method patterns implicitly
  */
 @Service
 @Transactional
@@ -39,14 +39,14 @@ public class UserService {
     }
 
     /**
-     * Template Method Pattern implementado implícitamente
-     * Define el algoritmo de registro con pasos específicos
+     * Template Method Pattern implemented implicitly
+     * Defines the registration algorithm with specific steps
      */
     public UserDTO registerUser(RegisterRequest request) {
         // Step 1: Validate request
         validateRegistrationRequest(request);
         
-        // Step 2: Create user using Factory Method (implícito en User entity)
+        // Step 2: Create user using Factory Method (implicit in User entity)
         User user = createUserByRole(request);
         
         // Step 3: Save user
@@ -55,14 +55,14 @@ public class UserService {
         // Step 4: Create additional profile if needed
         createAdditionalProfile(savedUser, request);
         
-        // Step 5: Send welcome notification (Observer pattern implícito)
+        // Step 5: Send welcome notification (Observer pattern implicit)
         notificationService.sendWelcomeNotification(savedUser);
         
         // Step 6: Convert to DTO and return
         return convertToDTO(savedUser);
     }
 
-    // Template method steps - pueden ser sobrescritos en subclases si fuera necesario
+    // Template method steps - can be overridden in subclasses if needed
     protected void validateRegistrationRequest(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("Email ya está registrado");
@@ -93,7 +93,7 @@ public class UserService {
         }
     }
 
-    // Factory Method implícito - delega a los factory methods de User
+    // Factory Method implicit - delegates to User factory methods
     private User createUserByRole(RegisterRequest request) {
         switch (request.getRole()) {
             case CANDIDATE:
@@ -161,7 +161,7 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        // Template method para actualización
+        // Template method for update
         updateBasicInfo(user, userDTO);
         validateUpdatedUser(user);
         
@@ -194,7 +194,7 @@ public class UserService {
         userRepository.deleteById(userId);
     }
 
-    // Adapter pattern implícito - convierte entre entidad y DTO
+    // Adapter pattern implicit - converts between entity and DTO
     private UserDTO convertToDTO(User user) {
         return new UserDTO(
                 user.getId(),

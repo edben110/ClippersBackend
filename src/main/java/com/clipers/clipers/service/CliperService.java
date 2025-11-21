@@ -29,8 +29,8 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Servicio que maneja Clipers implementando Chain of Responsibility implícitamente
- * El procesamiento se delega a la entidad Cliper que maneja la cadena internamente
+ * Service that handles Clipers implementing Chain of Responsibility pattern implicitly
+ * Processing is delegated to Cliper entity which handles the chain internally
  */
 @Service
 @Transactional
@@ -176,7 +176,7 @@ public class CliperService {
 
 
 
-    // Métodos CRUD estándar
+    // Standard CRUD methods
     public Optional<Cliper> findById(String id) {
         return cliperRepository.findById(id);
     }

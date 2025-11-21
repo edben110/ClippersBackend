@@ -31,21 +31,21 @@ public class Company {
 
     private String location;
 
-    private Integer foundedYear; // Año de fundación
+    private Integer foundedYear; // Foundation year
 
-    private String mission; // Misión de la empresa
+    private String mission; // Company mission
 
-    private String vision; // Visión de la empresa
+    private String vision; // Company vision
 
-    private List<String> benefits; // Beneficios que ofrece
+    private List<String> benefits; // Benefits offered
 
     private List<String> values; // Valores corporativos
 
-    private String culture; // Cultura organizacional
+    private String culture; // Organizational culture
 
-    private Integer employeeCount; // Número de empleados
+    private Integer employeeCount; // Number of employees
 
-    private List<String> socialMedia; // Redes sociales (LinkedIn, Twitter, etc.)
+    private List<String> socialMedia; // Social media (LinkedIn, Twitter, etc.)
 
     @JsonIgnore
     private String userId; // Referencia al usuario

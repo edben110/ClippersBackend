@@ -30,14 +30,14 @@ public class AuthController {
             AuthResponse response = authService.login(request);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            throw new RuntimeException("Credenciales inválidas", e);
+            throw new RuntimeException("Invalid credentials", e);
         }
     }
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
         try {
-            System.out.println("=== REGISTRO INICIADO ===");
+            System.out.println("=== REGISTRATION STARTED ===");
             System.out.println("Email: " + request.getEmail());
             System.out.println("Role: " + request.getRole());
             System.out.println("FirstName: " + request.getFirstName());
@@ -45,14 +45,14 @@ public class AuthController {
             
             AuthResponse response = authService.register(request);
             
-            System.out.println("=== REGISTRO EXITOSO ===");
+            System.out.println("=== REGISTRATION SUCCESSFUL ===");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            System.out.println("=== ERROR EN REGISTRO ===");
+            System.out.println("=== REGISTRATION ERROR ===");
             System.out.println("Error: " + e.getMessage());
-            System.out.println("Causa: " + (e.getCause() != null ? e.getCause().getMessage() : "Sin causa"));
+            System.out.println("Cause: " + (e.getCause() != null ? e.getCause().getMessage() : "No cause"));
             e.printStackTrace();
-            throw new RuntimeException("Error al registrar usuario: " + e.getMessage(), e);
+            throw new RuntimeException("Error registering user: " + e.getMessage(), e);
         }
     }
 
@@ -61,13 +61,13 @@ public class AuthController {
         try {
             String refreshToken = request.get("refreshToken");
             if (refreshToken == null || refreshToken.isEmpty()) {
-                throw new RuntimeException("Refresh token es requerido");
+                throw new RuntimeException("Refresh token is required");
             }
             
             AuthResponse response = authService.refreshToken(refreshToken);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            throw new RuntimeException("Error al refrescar token: " + e.getMessage(), e);
+            throw new RuntimeException("Error refreshing token: " + e.getMessage(), e);
         }
     }
 
@@ -83,7 +83,7 @@ public class AuthController {
             UserDTO user = authService.getCurrentUser(token);
             return ResponseEntity.ok(user);
         } catch (Exception e) {
-            throw new RuntimeException("Error al obtener usuario actual", e);
+            throw new RuntimeException("Error getting current user", e);
         }
     }
 

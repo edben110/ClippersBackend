@@ -18,8 +18,8 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Servicio que implementa Mediator Pattern implícitamente
- * Coordina las interacciones entre posts, comentarios y likes
+ * Service that implements Mediator Pattern implicitly
+ * Coordinates interactions between posts, comments and likes
  */
 @Service
 public class PostService {
@@ -44,7 +44,7 @@ public class PostService {
     }
 
     /**
-     * Template Method para creación de posts
+     * Template Method for post creation
      */
     public Post createPost(String userId, String content, String imageUrl, String videoUrl, Post.PostType type) {
         // Step 1: Validate user
@@ -59,7 +59,7 @@ public class PostService {
         post = postRepository.save(post);
         
         // Step 4: Notify observers (if needed)
-        // En este caso, no notificamos la creación de posts
+        // In this case, we don't notify post creation
         
         return post;
     }
@@ -70,7 +70,7 @@ public class PostService {
     }
 
     /**
-     * Mediator Pattern - coordina la acción de dar like
+     * Mediator Pattern - coordinates like action
      */
     public void toggleLike(String postId, String userId) {
         Post post = postRepository.findById(postId)
@@ -106,7 +106,7 @@ public class PostService {
             postLikeIds.add(savedLike.getId());
             post.setPostLikeIds(postLikeIds);
             
-            // Notify post owner (Observer pattern implícito)
+            // Notify post owner (Observer pattern implicit)
             if (!post.getUserId().equals(userId)) {
                 notificationService.notifyPostLiked(post.getUserId(), userId, postId);
             }
@@ -116,7 +116,7 @@ public class PostService {
     }
 
     /**
-     * Mediator Pattern - coordina la adición de comentarios
+     * Mediator Pattern - coordinates comment addition
      */
     public Comment addComment(String postId, String userId, String content) {
         Post post = postRepository.findById(postId)
@@ -141,7 +141,7 @@ public class PostService {
             savedComment.setUser(user);
         });
         
-        // Notify post owner (Observer pattern implícito)
+        // Notify post owner (Observer pattern implicit)
         if (!post.getUserId().equals(userId)) {
             notificationService.notifyPostCommented(post.getUserId(), userId, postId, content);
         }

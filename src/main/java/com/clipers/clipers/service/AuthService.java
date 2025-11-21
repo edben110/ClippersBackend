@@ -16,8 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Servicio de autenticación que implementa Template Method implícitamente
- * para los flujos de login y registro
+ * Authentication service that implements Template Method pattern implicitly
+ * for login and registration flows
  */
 @Service
 @Transactional
@@ -40,7 +40,7 @@ public class AuthService {
     }
 
     /**
-     * Template Method para login - define los pasos del proceso de autenticación
+     * Template Method for login - defines the authentication process steps
      */
     public AuthResponse login(AuthRequest request) {
         // Step 1: Validate credentials
@@ -85,10 +85,10 @@ public class AuthService {
     }
 
     /**
-     * Template Method para registro - define los pasos del proceso de registro
+     * Template Method for registration - defines the registration process steps
      */
     public AuthResponse register(RegisterRequest request) {
-        // Step 1: Register user using UserService (que tiene su propio Template Method)
+        // Step 1: Register user using UserService (which has its own Template Method)
         UserDTO userDTO = userService.registerUser(request);
 
         // Step 2: Get the saved user for token generation
@@ -107,7 +107,7 @@ public class AuthService {
     }
 
     /**
-     * Template Method para refresh token
+     * Template Method for refresh token
      */
     public AuthResponse refreshToken(String refreshToken) {
         // Step 1: Validate refresh token
@@ -161,7 +161,7 @@ public class AuthService {
         return new UserDTO(user);
     }
 
-    // Value Object para encapsular el par de tokens
+    // Value Object to encapsulate token pair
     private static class TokenPair {
         final String accessToken;
         final String refreshToken;

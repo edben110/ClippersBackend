@@ -208,7 +208,7 @@ public class ProfileController {
             String level = request.get("level");
             String category = request.get("category");
 
-            // Validar que los campos no estén vacíos
+            // Validate that fields are not empty
             if (name == null || name.trim().isEmpty()) {
                 throw new IllegalArgumentException("El nombre de la habilidad es requerido");
             }

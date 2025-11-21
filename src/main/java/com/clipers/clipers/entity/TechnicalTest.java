@@ -15,27 +15,27 @@ public class TechnicalTest {
     private String jobId;
     private String candidateId;
     private String companyId;
-    private String companyName; // Nombre de la empresa
-    private String jobTitle; // Título del puesto
-    private String testMarkdown; // Formato antiguo (mantener compatibilidad)
-    private String testJson; // Nuevo formato estructurado JSON
+    private String companyName; // Company name
+    private String jobTitle; // Job title
+    private String testMarkdown; // Old format (maintain compatibility)
+    private String testJson; // New structured JSON format
     private TestStatus status;
     private String candidateResponse; // Respuesta del candidato (formato antiguo)
-    private String candidateAnswersJson; // Respuestas estructuradas JSON
-    private Integer score; // Puntuación de la prueba
-    private String feedback; // Retroalimentación de la empresa
+    private String candidateAnswersJson; // Structured JSON answers
+    private Integer score; // Test score
+    private String feedback; // Company feedback
     
     @CreatedDate
     private LocalDateTime createdAt;
     
-    private LocalDateTime submittedAt; // Cuando el candidato envió la respuesta
-    private LocalDateTime reviewedAt; // Cuando la empresa revisó
+    private LocalDateTime submittedAt; // When candidate submitted response
+    private LocalDateTime reviewedAt; // When company reviewed
     
     public enum TestStatus {
-        SENT,       // Enviada al candidato
-        IN_PROGRESS, // Candidato está trabajando en ella
-        SUBMITTED,  // Candidato la envió
-        REVIEWED    // Empresa la revisó
+        SENT,       // Sent to candidate
+        IN_PROGRESS, // Candidate is working on it
+        SUBMITTED,  // Candidate submitted it
+        REVIEWED    // Company reviewed it
     }
     
     public TechnicalTest() {}
