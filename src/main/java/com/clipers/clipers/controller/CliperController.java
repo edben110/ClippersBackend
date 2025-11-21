@@ -288,14 +288,23 @@ public class CliperController {
 
     private String saveVideoFile(MultipartFile videoFile) {
         try {
-            // Crear directorio si no existe
-            Path uploadDir = Paths.get("./uploads/videos");
+            // Crear directorio si no existe - usar ruta absoluta
+            Path uploadDir = Paths.get("uploads/videos").toAbsolutePath();
             if (!Files.exists(uploadDir)) {
                 Files.createDirectories(uploadDir);
             }
 
+            // Sanitizar nombre de archivo - eliminar espacios y caracteres especiales
+            String originalFilename = videoFile.getOriginalFilename();
+            if (originalFilename == null) {
+                originalFilename = "video.mp4";
+            }
+            String sanitizedFilename = originalFilename
+                .replaceAll("[^a-zA-Z0-9.-]", "_") // Reemplazar caracteres especiales con guión bajo
+                .replaceAll("_+", "_"); // Reemplazar múltiples guiones bajos con uno solo
+            
             // Generar nombre único para el archivo
-            String fileName = "video_" + System.currentTimeMillis() + "_" + videoFile.getOriginalFilename();
+            String fileName = "video_" + System.currentTimeMillis() + "_" + sanitizedFilename;
             Path filePath = uploadDir.resolve(fileName);
 
             // Guardar el archivo

@@ -97,7 +97,9 @@ public class CliperService {
         java.nio.file.Path videoFilePath = null;
         if (videoFile != null) {
             videoUrlSaved = saveVideoFile(videoFile);
-            videoFilePath = java.nio.file.Paths.get("./uploads/videos", videoUrlSaved.substring(videoUrlSaved.lastIndexOf('/') + 1));
+            // Use absolute path for microservice
+            String fileName = videoUrlSaved.substring(videoUrlSaved.lastIndexOf('/') + 1);
+            videoFilePath = java.nio.file.Paths.get("uploads/videos", fileName).toAbsolutePath();
         }
 
         // Step 5: Process video synchronously before saving cliper
@@ -384,18 +386,29 @@ public class CliperService {
      */
     private String saveVideoFile(org.springframework.web.multipart.MultipartFile videoFile) {
         try {
-            // Create directory if it doesn't exist
-            java.nio.file.Path uploadDir = java.nio.file.Paths.get("./uploads/videos");
+            // Create directory if it doesn't exist - use absolute path
+            java.nio.file.Path uploadDir = java.nio.file.Paths.get("uploads/videos").toAbsolutePath();
             if (!java.nio.file.Files.exists(uploadDir)) {
                 java.nio.file.Files.createDirectories(uploadDir);
             }
 
+            // Sanitize filename - remove spaces and special characters
+            String originalFilename = videoFile.getOriginalFilename();
+            if (originalFilename == null) {
+                originalFilename = "video.mp4";
+            }
+            String sanitizedFilename = originalFilename
+                .replaceAll("[^a-zA-Z0-9.-]", "_") // Replace special chars with underscore
+                .replaceAll("_+", "_"); // Replace multiple underscores with single one
+            
             // Generate unique filename
-            String fileName = "video_" + System.currentTimeMillis() + "_" + videoFile.getOriginalFilename();
+            String fileName = "video_" + System.currentTimeMillis() + "_" + sanitizedFilename;
             java.nio.file.Path filePath = uploadDir.resolve(fileName);
 
             // Save file
             java.nio.file.Files.copy(videoFile.getInputStream(), filePath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+            System.out.println("✅ Video saved to: " + filePath.toAbsolutePath());
 
             // Return full URL for frontend access
             return fileUploadBaseUrl + "/uploads/videos/" + fileName;
@@ -615,7 +628,7 @@ public class CliperService {
         try {
             // Extract filename from URL
             String fileName = videoUrl.substring(videoUrl.lastIndexOf('/') + 1);
-            java.nio.file.Path filePath = java.nio.file.Paths.get("./uploads/videos", fileName);
+            java.nio.file.Path filePath = java.nio.file.Paths.get("uploads/videos", fileName).toAbsolutePath();
             
             // Delete file if exists
             if (java.nio.file.Files.exists(filePath)) {
