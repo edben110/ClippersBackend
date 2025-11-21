@@ -41,11 +41,11 @@
 				</exclusion>
 			</exclusions>
 		</dependency>
-		<!-- MongoDB Driver 4.x for Cosmos DB compatibility -->
+		<!-- MongoDB Driver 4.7.x for Cosmos DB wire version 7 compatibility -->
 		<dependency>
 			<groupId>org.mongodb</groupId>
 			<artifactId>mongodb-driver-sync</artifactId>
-			<version>4.11.1</version>
+			<version>4.7.2</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
