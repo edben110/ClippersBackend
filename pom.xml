@@ -28,14 +28,24 @@
 	</scm>
 	<properties>
 		<java.version>17</java.version>
-		<!-- Use MongoDB driver 4.x for Cosmos DB compatibility -->
-		<mongodb.version>4.11.1</mongodb.version>
 	</properties>
 	<dependencies>
 		<!-- Spring Boot Starters -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-mongodb</artifactId>
+			<exclusions>
+				<exclusion>
+					<groupId>org.mongodb</groupId>
+					<artifactId>mongodb-driver-sync</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<!-- MongoDB Driver 4.x for Cosmos DB compatibility -->
+		<dependency>
+			<groupId>org.mongodb</groupId>
+			<artifactId>mongodb-driver-sync</artifactId>
+			<version>4.11.1</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
