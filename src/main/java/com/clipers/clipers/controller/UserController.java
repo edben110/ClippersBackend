@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -34,6 +35,9 @@ import com.clipers.clipers.repository.UserRepository;
 public class UserController {
 
     private final UserRepository userRepository;
+
+    @Value("${file.upload.base.url}")
+    private String fileUploadBaseUrl;
 
     @Autowired
     public UserController(UserRepository userRepository) {
@@ -143,8 +147,8 @@ public class UserController {
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
             System.out.println("✅ Avatar saved to: " + filePath.toAbsolutePath());
 
-            // Update user profile image
-            String imageUrl = "/uploads/avatars/" + fileName;
+            // Update user profile image with full URL
+            String imageUrl = fileUploadBaseUrl + "/uploads/avatars/" + fileName;
             user.setProfileImage(imageUrl);
             userRepository.save(user);
             
