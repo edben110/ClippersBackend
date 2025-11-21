@@ -201,3 +201,104 @@ SERVER_PORT=8081
 ## 📄 Licencia
 
 Privado - Todos los derechos reservados
+
+---
+
+## 🧩 Patrones de Diseño de Software Utilizados (Análisis Detallado)
+
+### 1. Service Layer
+- **Dónde:** Todas las clases en `service/` (ej: `UserService`, `AuthService`, `CliperService`, `TechnicalTestService`, `NotificationService`).
+- **Cómo:** Centralizan la lógica de negocio, desacoplando los controladores de la persistencia y facilitando el testeo.
+- **Para qué:** Permiten reutilizar lógica, mantener el código organizado y aplicar reglas de negocio en un solo lugar.
+
+### 2. Template Method (Implícito)
+- **Dónde:** Métodos como `registerUser` en `UserService`, `login` en `AuthService`.
+- **Cómo:** Definen el esqueleto de un proceso (registro, login) y delegan pasos concretos a métodos auxiliares.
+- **Para qué:** Permiten estandarizar flujos complejos y facilitar la extensión o personalización de pasos.
+
+### 3. Factory Method (Implícito)
+- **Dónde:** Métodos constructores y estáticos en entidades como `User`.
+- **Cómo:** Permiten crear instancias de entidades según el contexto (ej: usuario candidato o empresa).
+- **Para qué:** Facilitan la creación flexible y controlada de objetos.
+
+### 4. Observer Pattern (Implícito)
+- **Dónde:** `NotificationService` y su lista de `NotificationHandler`.
+- **Cómo:** Notifica a todos los observadores registrados ante eventos relevantes (registro, like, comentario).
+- **Para qué:** Desacopla la lógica de notificación del flujo principal, permitiendo múltiples canales de notificación.
+
+### 5. Strategy Pattern (Implícito)
+- **Dónde:** En servicios como `CliperService` y `NotificationService`.
+- **Cómo:** Permite cambiar la estrategia de procesamiento de video o notificación según configuración o tipo de evento.
+- **Para qué:** Facilita la extensión y personalización de comportamientos sin modificar el flujo principal.
+
+### 6. Repository Pattern
+- **Dónde:** Todas las interfaces en `repository/` (ej: `UserRepository`, `JobRepository`, `TechnicalTestRepository`).
+- **Cómo:** Encapsulan el acceso a datos, permitiendo consultas declarativas y desacoplando la lógica de persistencia.
+- **Para qué:** Facilitan el mantenimiento, el testeo y la evolución de la capa de datos.
+
+### 7. Query Method Pattern
+- **Dónde:** Métodos como `findByEmail`, `findByJobIdAndCandidateId`, `findByIsActiveTrue` en los repositorios.
+- **Cómo:** Permiten definir consultas complejas usando el nombre del método o anotaciones `@Query`.
+- **Para qué:** Simplifican la consulta de datos y evitan escribir queries manuales.
+
+### 8. Entity Pattern
+- **Dónde:** Todas las clases en `entity/` (ej: `User`, `Cliper`, `Job`).
+- **Cómo:** Modelan los documentos de MongoDB y encapsulan la lógica de dominio.
+- **Para qué:** Representan los datos persistentes y sus relaciones.
+
+### 9. Value Object (Implícito)
+- **Dónde:** Campos como dirección, skills, comentarios en entidades.
+- **Cómo:** Encapsulan datos inmutables y sin identidad propia.
+- **Para qué:** Mejoran la claridad y robustez del modelo de dominio.
+
+### 10. DTO (Data Transfer Object)
+- **Dónde:** Clases en `dto/` (ej: `UserDTO`, `RegisterRequest`, `AuthResponse`).
+- **Cómo:** Transportan datos entre capas y hacia el frontend, evitando exponer entidades completas.
+- **Para qué:** Mejoran la seguridad, el control de la información y la eficiencia de la comunicación.
+
+### 11. Builder Pattern (Implícito en DTOs)
+- **Dónde:** Constructores sobrecargados en DTOs.
+- **Cómo:** Permiten crear instancias con diferentes combinaciones de datos.
+- **Para qué:** Facilitan la creación flexible de objetos de transferencia.
+
+### 12. Controller Pattern
+- **Dónde:** Todas las clases en `controller/` (ej: `UserController`, `AuthController`).
+- **Cómo:** Gestionan las rutas y peticiones HTTP, delegando la lógica a los servicios.
+- **Para qué:** Separan la lógica de presentación de la lógica de negocio.
+
+### 13. Singleton y Configuration Pattern
+- **Dónde:** Clases en `config/` (ej: `SecurityConfig`, `WebConfig`).
+- **Cómo:** Beans singleton gestionados por Spring, centralizando la configuración global.
+- **Para qué:** Permiten modificar el comportamiento global de la app de forma centralizada y escalable.
+
+---
+
+## Ejemplo de Uso de Patrones
+
+- **Registro de usuario:**
+  - `UserController` recibe la petición y delega a `UserService`.
+  - `UserService` usa Template Method para el flujo de registro y Factory Method para crear el usuario.
+  - Se guarda usando `UserRepository` (Repository Pattern).
+  - Se notifica usando `NotificationService` (Observer/Strategy).
+  - Se responde con un `UserDTO` (DTO).
+
+- **Autenticación:**
+  - `AuthController` delega a `AuthService`, que usa Template Method y responde con `AuthResponse` (DTO).
+
+- **Procesamiento de video:**
+  - `CliperService` decide la estrategia de procesamiento (Strategy) y notifica al usuario (Observer).
+
+---
+
+## Características Clave
+- Arquitectura limpia y desacoplada.
+- Uso extensivo de patrones de diseño estándar.
+- Seguridad y configuración centralizadas.
+- DTOs para comunicación eficiente y segura.
+- Repositorios declarativos y consultas personalizadas.
+
+---
+
+## Referencias
+- [Spring Boot Docs](https://spring.io/projects/spring-boot)
+- [Patrones de Diseño GoF](https://refactoring.guru/es/design-patterns)
