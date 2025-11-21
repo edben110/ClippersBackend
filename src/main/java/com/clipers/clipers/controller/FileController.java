@@ -127,4 +127,37 @@ public class FileController {
             return ResponseEntity.internalServerError().build();
         }
     }
+
+    @GetMapping("/avatars/{filename:.+}")
+    public ResponseEntity<Resource> serveAvatar(@PathVariable String filename) {
+        try {
+            Path filePath = Paths.get("uploads/avatars").toAbsolutePath().resolve(filename);
+            Resource resource = new UrlResource(filePath.toUri());
+
+            if (resource.exists() && resource.isReadable()) {
+                // Detectar tipo de imagen
+                String contentType = "image/jpeg";
+                if (filename.endsWith(".png")) {
+                    contentType = "image/png";
+                } else if (filename.endsWith(".gif")) {
+                    contentType = "image/gif";
+                } else if (filename.endsWith(".webp")) {
+                    contentType = "image/webp";
+                } else if (filename.endsWith(".jpg") || filename.endsWith(".jpeg")) {
+                    contentType = "image/jpeg";
+                }
+
+                return ResponseEntity.ok()
+                        .contentType(MediaType.parseMediaType(contentType))
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
+                        .header(HttpHeaders.CACHE_CONTROL, "public, max-age=31536000")
+                        .body(resource);
+            } else {
+                return ResponseEntity.notFound().build();
+            }
+        } catch (Exception e) {
+            System.err.println("Error serving avatar: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
 }

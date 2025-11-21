@@ -93,38 +93,70 @@ public class UserController {
     @PreAuthorize("hasRole('CANDIDATE')")
     public ResponseEntity<Map<String, String>> uploadAvatar(@RequestParam("file") MultipartFile file) {
         try {
+            System.out.println("=== UPLOAD AVATAR REQUEST ===");
+            System.out.println("File: " + file.getOriginalFilename());
+            System.out.println("Size: " + file.getSize());
+            
             String userId = getCurrentUserId();
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-            // Create uploads directory if it doesn't exist
-            Path uploadDir = Paths.get("./uploads/avatars");
+            System.out.println("User ID: " + userId);
+
+            // Create uploads directory if it doesn't exist - use absolute path
+            Path uploadDir = Paths.get("uploads", "avatars").toAbsolutePath();
             if (!Files.exists(uploadDir)) {
                 Files.createDirectories(uploadDir);
+                System.out.println("Created directory: " + uploadDir);
+            }
+
+            // Delete old avatar if exists
+            if (user.getProfileImage() != null && !user.getProfileImage().isEmpty()) {
+                try {
+                    String oldFileName = user.getProfileImage().substring(user.getProfileImage().lastIndexOf('/') + 1);
+                    Path oldFilePath = uploadDir.resolve(oldFileName);
+                    Files.deleteIfExists(oldFilePath);
+                    System.out.println("Deleted old avatar: " + oldFileName);
+                } catch (Exception e) {
+                    System.err.println("Error deleting old avatar: " + e.getMessage());
+                }
             }
 
             // Sanitize filename - remove spaces and special characters
             String originalFilename = file.getOriginalFilename();
-            String sanitizedFilename = originalFilename != null 
-                ? originalFilename.replaceAll("[^a-zA-Z0-9.-]", "_") 
-                : "avatar.png";
+            if (originalFilename == null) {
+                originalFilename = "avatar.png";
+            }
+            
+            // Get extension
+            String extension = "";
+            if (originalFilename.contains(".")) {
+                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+                extension = extension.replaceAll("[^a-zA-Z0-9.-]", "").toLowerCase();
+            }
             
             // Generate unique filename
-            String fileName = "avatar_" + userId + "_" + System.currentTimeMillis() + "_" + sanitizedFilename;
+            String fileName = "avatar_" + userId + "_" + System.currentTimeMillis() + extension;
             Path filePath = uploadDir.resolve(fileName);
 
             // Save file
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+            System.out.println("✅ Avatar saved to: " + filePath.toAbsolutePath());
 
             // Update user profile image
             String imageUrl = "/uploads/avatars/" + fileName;
             user.setProfileImage(imageUrl);
             userRepository.save(user);
+            
+            System.out.println("✅ User profile updated with image URL: " + imageUrl);
+            System.out.println("=== END UPLOAD AVATAR ===");
 
             Map<String, String> response = new HashMap<>();
             response.put("imageUrl", imageUrl);
             return ResponseEntity.ok(response);
         } catch (IOException e) {
+            System.err.println("❌ Error uploading avatar: " + e.getMessage());
+            e.printStackTrace();
             throw new RuntimeException("Error al subir avatar: " + e.getMessage(), e);
         }
     }
@@ -140,8 +172,10 @@ public class UserController {
             // Delete old avatar file if exists
             if (user.getProfileImage() != null && !user.getProfileImage().isEmpty()) {
                 try {
-                    Path oldFilePath = Paths.get("./uploads/avatars", user.getProfileImage().substring(user.getProfileImage().lastIndexOf('/') + 1));
+                    String fileName = user.getProfileImage().substring(user.getProfileImage().lastIndexOf('/') + 1);
+                    Path oldFilePath = Paths.get("uploads", "avatars", fileName).toAbsolutePath();
                     Files.deleteIfExists(oldFilePath);
+                    System.out.println("Deleted avatar file: " + oldFilePath);
                 } catch (IOException e) {
                     // Log but don't fail the operation
                     System.err.println("Error deleting old avatar file: " + e.getMessage());
