@@ -1,7 +1,7 @@
 # ==========================
 # 🏗️ Etapa de construcción (Build)
 # ==========================
-FROM eclipse-temurin:21-jdk AS build
+FROM eclipse-temurin:17-jdk AS build
 
 # Instalar Maven
 RUN apt-get update && apt-get install -y maven && rm -rf /var/lib/apt/lists/*
@@ -27,7 +27,7 @@ RUN mvn clean package -DskipTests
 # ==========================
 # 🚀 Etapa de producción (Runtime) - Optimizada
 # ==========================
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:17-jre-alpine
 
 # Instalar curl para health checks (Alpine es ~150MB vs ~900MB)
 RUN apk add --no-cache curl
