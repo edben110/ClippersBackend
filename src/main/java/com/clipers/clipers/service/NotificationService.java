@@ -15,7 +15,7 @@ import com.clipers.clipers.entity.User;
 @Service
 public class NotificationService {
 
-    // Lista de observadores (diferentes tipos de notificación)
+    // List of observers (different notification types)
     private final List<NotificationHandler> handlers;
 
     public NotificationService() {
@@ -85,7 +85,7 @@ public class NotificationService {
     public void notifyJobApplication(String jobId, String applicantId) {
         NotificationEvent event = new NotificationEvent(
             NotificationEvent.EventType.JOB_APPLICATION,
-            null, // La empresa será notificada a través del job
+            null, // Company will be notified through job
             applicantId,
             jobId,
             "Nueva aplicación recibida para tu oferta laboral"
@@ -129,7 +129,7 @@ public class NotificationService {
     private static class EmailNotificationHandler implements NotificationHandler {
         @Override
         public void handle(NotificationEvent event) {
-            // Simular envío de email
+            // Simulate email sending
             System.out.println(String.format(
                 "📧 EMAIL para usuario %s: %s [%s]", 
                 event.getUserId(), 
@@ -142,7 +142,7 @@ public class NotificationService {
     private static class InAppNotificationHandler implements NotificationHandler {
         @Override
         public void handle(NotificationEvent event) {
-            // Simular notificación in-app
+            // Simulate in-app notification
             System.out.println(String.format(
                 "🔔 IN-APP NOTIFICATION para usuario %s: %s [%s]", 
                 event.getUserId(), 
@@ -165,7 +165,7 @@ public class NotificationService {
         }
     }
 
-    // Clase interna para eventos de notificación
+    // Inner class for notification events
     public static class NotificationEvent {
         public enum EventType {
             USER_REGISTERED, POST_LIKED, POST_COMMENTED, JOB_MATCHED, CLIPER_PROCESSED, JOB_APPLICATION, APPLICATION_STATUS_UPDATE

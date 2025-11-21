@@ -36,8 +36,8 @@ import com.clipers.clipers.security.CustomUserDetailsService.CustomUserPrincipal
 import com.clipers.clipers.service.PostService;
 
 /**
- * Controlador que implementa Facade Pattern implícitamente
- * Proporciona una interfaz simplificada para las operaciones del feed social
+ * Controller that implements Facade Pattern implicitly
+ * Provides a simplified interface for social feed operations
  */
 @RestController
 @RequestMapping("/api/posts")
@@ -105,13 +105,13 @@ public class PostController {
                 Files.createDirectories(uploadPath);
             }
 
-            // Generar nombre único para el archivo
+            // Generate unique filename
             String originalFilename = file.getOriginalFilename();
             String extension = originalFilename != null && originalFilename.contains(".")
                 ? originalFilename.substring(originalFilename.lastIndexOf("."))
                 : ".jpg";
             
-            // Sanitizar extensión
+            // Sanitize extension
             extension = extension.replaceAll("[^a-zA-Z0-9.-]", "").toLowerCase();
             
             String filename = UUID.randomUUID().toString() + extension;
@@ -324,7 +324,7 @@ public class PostController {
     private String getCurrentUserId(String authHeader) {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
-            // Aquí necesitaríamos inyectar JwtTokenProvider, pero por simplicidad usaremos el SecurityContext
+            // Here we would need to inject JwtTokenProvider, but for simplicity we'll use SecurityContext
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             if (auth != null && auth.getPrincipal() instanceof User) {
                 User user = (User) auth.getPrincipal();

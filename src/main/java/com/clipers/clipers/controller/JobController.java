@@ -298,7 +298,7 @@ public class JobController {
         }
     }
 
-    // Endpoints para gestión de aplicaciones
+    // Endpoints for application management
 
     @GetMapping("/my-applications")
     @PreAuthorize("isAuthenticated()")

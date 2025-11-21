@@ -14,8 +14,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Servicio que implementa Strategy Pattern implícitamente
- * para diferentes algoritmos de matching candidatos ↔ vacantes
+ * Service that implements Strategy Pattern implicitly
+ * for different candidate-job matching algorithms
  */
 @Service
 @Transactional
@@ -58,27 +58,27 @@ public class JobService {
 
         job = jobRepository.save(job);
 
-        // Ejecutar matching automático con candidatos
+        // Execute automatic matching with candidates
         performAutomaticMatching(job);
 
         return job;
     }
 
     /**
-     * Strategy Pattern implementado implícitamente
-     * Aplica diferentes estrategias de matching según el contexto
+     * Strategy Pattern implemented implicitly
+     * Applies different matching strategies based on context
      */
     private void performAutomaticMatching(Job job) {
-        // En producción, esto se ejecutaría de forma asíncrona
+        // In production, this would run asynchronously
         new Thread(() -> {
             try {
                 List<User> candidates = userRepository.findCandidatesWithATSProfile();
                 
                 for (User candidate : candidates) {
-                    // Aplicar múltiples estrategias de matching
+                    // Apply multiple matching strategies
                     double overallScore = calculateOverallMatchScore(candidate, job);
                     
-                    // Solo crear match si el score es significativo
+                    // Only create match if score is significant
                     if (overallScore >= 0.3) {
                         String explanation = generateMatchExplanation(candidate, job, overallScore);
                         List<String> matchedSkills = findMatchedSkills(candidate, job);
@@ -87,7 +87,7 @@ public class JobService {
                         jobMatch.setMatchedSkills(matchedSkills);
                         jobMatchRepository.save(jobMatch);
                         
-                        // Notificar al candidato si el match es bueno
+                        // Notify candidate if match is good
                         if (overallScore >= 0.6) {
                             notificationService.notifyJobMatched(candidate.getId(), job.getId(), overallScore);
                         }
@@ -99,13 +99,13 @@ public class JobService {
         }).start();
     }
 
-    // Strategy Pattern - combina múltiples estrategias
+    // Strategy Pattern - combines multiple strategies
     private double calculateOverallMatchScore(User candidate, Job job) {
         double skillScore = calculateSkillMatchScore(candidate, job);
         double experienceScore = calculateExperienceMatchScore(candidate, job);
         double locationScore = calculateLocationMatchScore(candidate, job);
         
-        // Pesos para cada estrategia
+        // Weights for each strategy
         double skillWeight = 0.5;
         double experienceWeight = 0.3;
         double locationWeight = 0.2;
@@ -115,7 +115,7 @@ public class JobService {
                (locationScore * locationWeight);
     }
 
-    // Estrategia basada en habilidades
+    // Skill-based strategy
     private double calculateSkillMatchScore(User candidate, Job job) {
         Optional<ATSProfile> atsProfileOpt = atsProfileRepository.findByUserId(candidate.getId());
         if (atsProfileOpt.isEmpty() || atsProfileOpt.get().getSkills().isEmpty()) {
@@ -134,25 +134,25 @@ public class JobService {
                 .collect(Collectors.toSet());
 
         if (jobSkills.isEmpty()) {
-            return 0.5; // Score neutro si el trabajo no especifica habilidades
+            return 0.5; // Neutral score if job doesn't specify skills
         }
 
-        // Calcular intersección
+        // Calculate intersection
         Set<String> commonSkills = new HashSet<>(candidateSkills);
         commonSkills.retainAll(jobSkills);
 
         return (double) commonSkills.size() / jobSkills.size();
     }
 
-    // Estrategia basada en experiencia
+    // Experience-based strategy
     private double calculateExperienceMatchScore(User candidate, Job job) {
         Optional<ATSProfile> atsProfileOpt = atsProfileRepository.findByUserId(candidate.getId());
         if (atsProfileOpt.isEmpty() || atsProfileOpt.get().getExperience().isEmpty()) {
-            return 0.2; // Score bajo si no tiene experiencia registrada
+            return 0.2; // Low score if no experience registered
         }
 
         ATSProfile atsProfile = atsProfileOpt.get();
-        // Calcular años totales de experiencia
+        // Calculate total years of experience
         int totalYearsOfExperience = atsProfile.getExperience()
                 .stream()
                 .mapToInt(exp -> {
@@ -169,7 +169,7 @@ public class JobService {
                 })
                 .sum();
 
-        // Evaluar experiencia según el tipo de trabajo
+        // Evaluate experience based on job type
         return switch (job.getType()) {
             case INTERNSHIP -> totalYearsOfExperience >= 0 ? 0.9 : 0.5;
             case FULL_TIME -> {
@@ -182,16 +182,16 @@ public class JobService {
         };
     }
 
-    // Estrategia basada en ubicación
+    // Location-based strategy
     private double calculateLocationMatchScore(User candidate, Job job) {
-        // Estrategia simple - en producción sería más sofisticada
+        // Simple strategy - in production would be more sophisticated
         if (job.getLocation() == null || job.getLocation().toLowerCase().contains("remoto")) {
-            return 1.0; // Trabajo remoto siempre coincide
+            return 1.0; // Remote work always matches
         }
         
-        // Por simplicidad, asumimos coincidencia perfecta o nula
-        // En producción se usaría geolocalización
-        return 0.7; // Score por defecto para ubicación
+        // For simplicity, we assume perfect or no match
+        // In production would use geolocation
+        return 0.7; // Default score for location
     }
 
     private String generateMatchExplanation(User candidate, Job job, double overallScore) {
@@ -201,7 +201,7 @@ public class JobService {
         double skillScore = calculateSkillMatchScore(candidate, job);
         double experienceScore = calculateExperienceMatchScore(candidate, job);
         
-        // Explicación de skills
+        // Skills explanation
         if (skillScore >= 0.8) {
             explanation.append("- Excelente coincidencia de habilidades\n");
         } else if (skillScore >= 0.6) {
@@ -212,7 +212,7 @@ public class JobService {
             explanation.append("- Pocas habilidades coincidentes\n");
         }
         
-        // Explicación de experiencia
+        // Experience explanation
         if (experienceScore >= 0.8) {
             explanation.append("- Experiencia muy adecuada para el puesto\n");
         } else if (experienceScore >= 0.6) {
@@ -243,7 +243,7 @@ public class JobService {
                 .collect(Collectors.toList());
     }
 
-    // Métodos CRUD estándar
+    // Standard CRUD methods
     public Optional<Job> findById(String id) {
         return jobRepository.findById(id);
     }
@@ -339,7 +339,7 @@ public class JobService {
         job1.setSalaryMax(6000000);
         sampleJobs.add(job1);
 
-        // Job 2: Diseñador UX/UI
+        // Job 2: UX/UI Designer
         Job job2 = new Job("Diseñador UX/UI Senior",
             "Únete a nuestro equipo creativo para diseñar experiencias de usuario excepcionales para nuestros productos digitales.",
             "Medellín, Colombia", Job.JobType.FULL_TIME, company.getId());
@@ -437,10 +437,10 @@ public class JobService {
         job8.setSalaryMax(6500000);
         sampleJobs.add(job8);
 
-        // Guardar todos los jobs
+        // Save all jobs
         jobRepository.saveAll(sampleJobs);
 
-        // Ejecutar matching automático para cada job
+        // Execute automatic matching for each job
         sampleJobs.forEach(this::performAutomaticMatching);
 
         return sampleJobs.size();
@@ -461,14 +461,14 @@ public class JobService {
             throw new RuntimeException("Solo los candidatos pueden aplicar a trabajos");
         }
 
-        // Verificar que no haya aplicado ya
+        // Check if already applied
         Optional<JobMatch> existingApplication = jobMatchRepository.findByUserIdAndJobId(userId, jobId);
         if (existingApplication.isPresent()) {
             throw new RuntimeException("Ya has aplicado a este trabajo");
         }
 
-        // Crear nueva aplicación
-        JobMatch application = new JobMatch(job.getId(), user.getId(), 0.0, "Aplicación manual del candidato");
+        // Create new application
+        JobMatch application = new JobMatch(job.getId(), user.getId(), 0.0, "Manual candidate application");
         application.setStatus(JobMatch.ApplicationStatus.PENDING);
         application.setApplicationMessage(applicationMessage);
 
@@ -479,7 +479,7 @@ public class JobService {
         JobMatch jobMatch = jobMatchRepository.findById(jobMatchId)
                 .orElseThrow(() -> new RuntimeException("Aplicación no encontrada"));
 
-        // Verificar que la empresa sea la propietaria del trabajo
+        // Verify that the company owns the job
         Job job = jobRepository.findById(jobMatch.getJobId())
                 .orElseThrow(() -> new RuntimeException("Trabajo no encontrado"));
         Company company = companyRepository.findById(job.getCompanyId())
@@ -492,7 +492,7 @@ public class JobService {
         jobMatch.setStatus(status);
         JobMatch updated = jobMatchRepository.save(jobMatch);
 
-        // Notificar al candidato
+        // Notify candidate
         String message = switch (status) {
             case ACCEPTED -> "¡Felicitaciones! Tu aplicación ha sido aceptada.";
             case REJECTED -> "Tu aplicación ha sido rechazada.";
@@ -521,7 +521,7 @@ public class JobService {
         return jobMatchRepository.findByJobId(jobId);
     }
 
-    // Métodos auxiliares para DTOs
+    // Helper methods for DTOs
     public List<com.clipers.clipers.dto.JobDTO> convertJobsToDTO(List<Job> jobs) {
         return jobs.stream()
                 .map(job -> {

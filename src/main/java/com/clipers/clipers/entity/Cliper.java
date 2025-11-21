@@ -67,7 +67,7 @@ public class Cliper {
 
 
 
-    // State Pattern implícito para manejo de estados
+    // State Pattern implicit for state management
     public boolean canBeEdited() {
         return this.status == Status.UPLOADED || this.status == Status.FAILED || this.status == Status.DONE;
     }

@@ -1,0 +1,1018 @@
+{
+	"
+info": {
+		"_postman_id": "clipers-api-collection",
+		"name": "Clipers API",
+		"description": "Complete API collection for Clipers Backend - Professional Video CV Platform",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{accessToken}}",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080/api",
+			"type": "string"
+		},
+		{
+			"key": "accessToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "refreshToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "userId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "jobId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "cliperId",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Register Candidate",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set('accessToken', jsonData.accessToken);",
+									"    pm.collectionVariables.set('refreshToken', jsonData.refreshToken);",
+									"    pm.collectionVariables.set('userId', jsonData.user.id);",
+									"    pm.test('Registration successful', function() {",
+									"        pm.expect(jsonData.user.role).to.eql('CANDIDATE');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"candidate@example.com\",\n  \"password\": \"password123\",\n  \"role\": \"CANDIDATE\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "register"]
+						},
+						"description": "Register a new candidate user"
+					}
+				},
+				{
+					"name": "Register Company",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set('accessToken', jsonData.accessToken);",
+									"    pm.collectionVariables.set('refreshToken', jsonData.refreshToken);",
+									"    pm.test('Company registration successful', function() {",
+									"        pm.expect(jsonData.user.role).to.eql('COMPANY');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"company@example.com\",\n  \"password\": \"password123\",\n  \"role\": \"COMPANY\",\n  \"companyName\": \"Tech Corp\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "register"]
+						},
+						"description": "Register a new company user"
+					}
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set('accessToken', jsonData.accessToken);",
+									"    pm.collectionVariables.set('refreshToken', jsonData.refreshToken);",
+									"    pm.collectionVariables.set('userId', jsonData.user.id);",
+									"    pm.test('Login successful', function() {",
+									"        pm.expect(jsonData.accessToken).to.be.a('string');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"candidate@example.com\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "login"]
+						},
+						"description": "Login with email and password"
+					}
+				},
+				{
+					"name": "Get Current User",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/auth/me",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "me"]
+						},
+						"description": "Get current authenticated user information"
+					}
+				},
+				{
+					"name": "Refresh Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set('accessToken', jsonData.accessToken);",
+									"    pm.collectionVariables.set('refreshToken', jsonData.refreshToken);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/refresh",
+							"host": ["{{baseUrl}}"],
+							"path": ["auth", "refresh"]
+						},
+						"description": "Refresh access token using refresh token"
+					}
+				}
+			],
+			"description": "Authentication endpoints for login, register, and token management"
+		},
+		{
+			"name": "Clipers",
+			"item": [
+				{
+					"name": "Get Public Clipers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/clipers/public?page=0&size=12",
+							"host": ["{{baseUrl}}"],
+							"path": ["clipers", "public"],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "12"
+								}
+							]
+						},
+						"description": "Get paginated list of public clipers"
+					}
+				},
+				{
+					"name": "Upload Cliper",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "video",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "title",
+									"value": "My Professional Introduction",
+									"type": "text"
+								},
+								{
+									"key": "description",
+									"value": "Software Developer with 5 years of experience",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/clipers/upload",
+							"host": ["{{baseUrl}}"],
+							"path": ["clipers", "upload"]
+						},
+						"description": "Upload a new cliper (video CV) - Candidate only"
+					}
+				},
+				{
+					"name": "Get My Clipers",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/clipers/my",
+							"host": ["{{baseUrl}}"],
+							"path": ["clipers", "my"]
+						},
+						"description": "Get current user's clipers"
+					}
+				},
+				{
+					"name": "Get Cliper by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/clipers/{{cliperId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["clipers", "{{cliperId}}"]
+						},
+						"description": "Get specific cliper by ID"
+					}
+				},
+				{
+					"name": "Like Cliper",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/clipers/{{cliperId}}/like",
+							"host": ["{{baseUrl}}"],
+							"path": ["clipers", "{{cliperId}}", "like"]
+						},
+						"description": "Toggle like on a cliper"
+					}
+				},
+				{
+					"name": "Add Comment to Cliper",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"text\": \"Great presentation!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/clipers/{{cliperId}}/comments",
+							"host": ["{{baseUrl}}"],
+							"path": ["clipers", "{{cliperId}}", "comments"]
+						},
+						"description": "Add a comment to a cliper"
+					}
+				},
+				{
+					"name": "Delete Cliper",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/clipers/{{cliperId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["clipers", "{{cliperId}}"]
+						},
+						"description": "Delete own cliper"
+					}
+				}
+			],
+			"description": "Cliper (Video CV) management endpoints"
+		},
+		{
+			"name": "Jobs",
+			"item": [
+				{
+					"name": "Get Public Jobs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/jobs/public?page=0&size=10",
+							"host": ["{{baseUrl}}"],
+							"path": ["jobs", "public"],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Get paginated list of active jobs"
+					}
+				},
+				{
+					"name": "Create Job",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set('jobId', jsonData.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Senior Java Developer\",\n  \"description\": \"We are looking for an experienced Java developer to join our team.\",\n  \"requirements\": [\n    \"5+ years of Java experience\",\n    \"Spring Boot expertise\",\n    \"MongoDB knowledge\"\n  ],\n  \"skills\": [\n    \"Java\",\n    \"Spring Boot\",\n    \"MongoDB\",\n    \"REST API\",\n    \"Microservices\"\n  ],\n  \"location\": \"Remote\",\n  \"type\": \"FULL_TIME\",\n  \"salaryMin\": 5000000,\n  \"salaryMax\": 8000000\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/jobs",
+							"host": ["{{baseUrl}}"],
+							"path": ["jobs"]
+						},
+						"description": "Create a new job posting - Company only"
+					}
+				},
+				{
+					"name": "Get Job by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/jobs/{{jobId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["jobs", "{{jobId}}"]
+						},
+						"description": "Get specific job by ID"
+					}
+				},
+				{
+					"name": "Get My Jobs",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/jobs/my-jobs",
+							"host": ["{{baseUrl}}"],
+							"path": ["jobs", "my-jobs"]
+						},
+						"description": "Get company's posted jobs - Company only"
+					}
+				},
+				{
+					"name": "Apply to Job",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"message\": \"I am very interested in this position. I have 5 years of experience with Java and Spring Boot.\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/jobs/{{jobId}}/apply",
+							"host": ["{{baseUrl}}"],
+							"path": ["jobs", "{{jobId}}", "apply"]
+						},
+						"description": "Apply to a job - Candidate only"
+					}
+				},
+				{
+					"name": "Get My Applications",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/jobs/my-applications",
+							"host": ["{{baseUrl}}"],
+							"path": ["jobs", "my-applications"]
+						},
+						"description": "Get candidate's job applications"
+					}
+				},
+				{
+					"name": "Get Job Applications",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/jobs/{{jobId}}/applications",
+							"host": ["{{baseUrl}}"],
+							"path": ["jobs", "{{jobId}}", "applications"]
+						},
+						"description": "Get applications for a job - Company only"
+					}
+				},
+				{
+					"name": "Update Job",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"title\": \"Senior Java Developer (Updated)\",\n  \"description\": \"Updated description\",\n  \"requirements\": [\n    \"5+ years of Java experience\",\n    \"Spring Boot expertise\"\n  ],\n  \"skills\": [\n    \"Java\",\n    \"Spring Boot\",\n    \"MongoDB\"\n  ],\n  \"location\": \"Remote\",\n  \"type\": \"FULL_TIME\",\n  \"salaryMin\": 5500000,\n  \"salaryMax\": 8500000\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/jobs/{{jobId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["jobs", "{{jobId}}"]
+						},
+						"description": "Update job posting - Company only"
+					}
+				},
+				{
+					"name": "Delete Job",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/jobs/{{jobId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["jobs", "{{jobId}}"]
+						},
+						"description": "Delete job posting - Company only"
+					}
+				}
+			],
+			"description": "Job posting and application management endpoints"
+		},
+		{
+			"name": "Posts",
+			"item": [
+				{
+					"name": "Get Feed",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts?page=0&size=10",
+							"host": ["{{baseUrl}}"],
+							"path": ["posts"],
+							"query": [
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Get social feed posts"
+					}
+				},
+				{
+					"name": "Create Post",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"content\": \"Excited to share my new project! 🚀\",\n  \"type\": \"TEXT\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/posts",
+							"host": ["{{baseUrl}}"],
+							"path": ["posts"]
+						},
+						"description": "Create a new post"
+					}
+				},
+				{
+					"name": "Like Post",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/:postId/like",
+							"host": ["{{baseUrl}}"],
+							"path": ["posts", ":postId", "like"],
+							"variable": [
+								{
+									"key": "postId",
+									"value": ""
+								}
+							]
+						},
+						"description": "Toggle like on a post"
+					}
+				},
+				{
+					"name": "Add Comment",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"content\": \"Great post!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/posts/:postId/comments",
+							"host": ["{{baseUrl}}"],
+							"path": ["posts", ":postId", "comments"],
+							"variable": [
+								{
+									"key": "postId",
+									"value": ""
+								}
+							]
+						},
+						"description": "Add a comment to a post"
+					}
+				},
+				{
+					"name": "Get Comments",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/:postId/comments",
+							"host": ["{{baseUrl}}"],
+							"path": ["posts", ":postId", "comments"],
+							"variable": [
+								{
+									"key": "postId",
+									"value": ""
+								}
+							]
+						},
+						"description": "Get comments for a post"
+					}
+				},
+				{
+					"name": "Delete Post",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/:postId",
+							"host": ["{{baseUrl}}"],
+							"path": ["posts", ":postId"],
+							"variable": [
+								{
+									"key": "postId",
+									"value": ""
+								}
+							]
+						},
+						"description": "Delete own post"
+					}
+				}
+			],
+			"description": "Social feed posts management"
+		},
+		{
+			"name": "Profile",
+			"item": [
+				{
+					"name": "Get User Profile",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/users/{{userId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["users", "{{userId}}"]
+						},
+						"description": "Get user profile by ID"
+					}
+				},
+				{
+					"name": "Update Profile",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+1234567890\",\n  \"address\": \"123 Main St, City, Country\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/users/profile",
+							"host": ["{{baseUrl}}"],
+							"path": ["users", "profile"]
+						},
+						"description": "Update user profile"
+					}
+				},
+				{
+					"name": "Upload Avatar",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/users/upload/avatar",
+							"host": ["{{baseUrl}}"],
+							"path": ["users", "upload", "avatar"]
+						},
+						"description": "Upload profile avatar"
+					}
+				},
+				{
+					"name": "Get ATS Profile",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/profile/ats",
+							"host": ["{{baseUrl}}"],
+							"path": ["profile", "ats"]
+						},
+						"description": "Get ATS profile - Candidate only"
+					}
+				},
+				{
+					"name": "Create/Update ATS Profile",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"summary\": \"Experienced software developer with expertise in Java and Spring Boot\",\n  \"education\": [\n    {\n      \"institution\": \"University Name\",\n      \"degree\": \"Bachelor\",\n      \"field\": \"Computer Science\",\n      \"startDate\": \"2015-01\",\n      \"endDate\": \"2019-06\"\n    }\n  ],\n  \"experience\": [\n    {\n      \"company\": \"Tech Company\",\n      \"position\": \"Senior Developer\",\n      \"startDate\": \"2019-07\",\n      \"description\": \"Developed microservices using Spring Boot\",\n      \"skills\": [\"Java\", \"Spring Boot\", \"MongoDB\"]\n    }\n  ],\n  \"skills\": [\n    {\n      \"name\": \"Java\",\n      \"level\": \"ADVANCED\",\n      \"category\": \"TECHNICAL\"\n    },\n    {\n      \"name\": \"Spring Boot\",\n      \"level\": \"ADVANCED\",\n      \"category\": \"TECHNICAL\"\n    }\n  ],\n  \"languages\": [\n    {\n      \"name\": \"English\",\n      \"level\": \"ADVANCED\"\n    },\n    {\n      \"name\": \"Spanish\",\n      \"level\": \"NATIVE\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/profile/ats",
+							"host": ["{{baseUrl}}"],
+							"path": ["profile", "ats"]
+						},
+						"description": "Create or update ATS profile"
+					}
+				}
+			],
+			"description": "User profile management"
+		},
+		{
+			"name": "Health & Test",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/../actuator/health",
+							"host": ["{{baseUrl}}"],
+							"path": ["..", "actuator", "health"]
+						},
+						"description": "Check API health status"
+					}
+				},
+				{
+					"name": "Test Endpoint",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/test/health",
+							"host": ["{{baseUrl}}"],
+							"path": ["test", "health"]
+						},
+						"description": "Test endpoint (dev mode only)"
+					}
+				}
+			],
+			"description": "Health check and test endpoints"
+		}
+	]
+}

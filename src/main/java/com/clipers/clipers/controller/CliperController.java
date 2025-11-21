@@ -300,10 +300,10 @@ public class CliperController {
                 originalFilename = "video.mp4";
             }
             String sanitizedFilename = originalFilename
-                .replaceAll("[^a-zA-Z0-9.-]", "_") // Reemplazar caracteres especiales con guión bajo
-                .replaceAll("_+", "_"); // Reemplazar múltiples guiones bajos con uno solo
+                .replaceAll("[^a-zA-Z0-9.-]", "_") // Replace special characters with underscore
+                .replaceAll("_+", "_"); // Replace multiple underscores with single one
             
-            // Generar nombre único para el archivo
+            // Generate unique filename
             String fileName = "video_" + System.currentTimeMillis() + "_" + sanitizedFilename;
             Path filePath = uploadDir.resolve(fileName);
 
@@ -318,10 +318,10 @@ public class CliperController {
     }
 
     private Integer extractVideoDuration(MultipartFile videoFile) {
-        // Simular extracción de duración
-        // En producción, usaría FFmpeg para obtener la duración real
-        // Generar duración entre 15-120 segundos (válido según validación)
-        return 15 + (int)(Math.random() * 105); // 15-120 segundos
+        // Simulate duration extraction
+        // In production, would use FFmpeg to get real duration
+        // Generate duration between 15-120 seconds (valid according to validation)
+        return 15 + (int)(Math.random() * 105); // 15-120 seconds
     }
 
     // Like/Unlike endpoints

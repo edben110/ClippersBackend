@@ -32,7 +32,7 @@ public class VideoProcessingResponse {
         this.profileData = profileData;
     }
 
-    // Mantener compatibilidad con código existente
+    // Maintain compatibility with existing code
     public String getTranscription() {
         return cvProfile;
     }

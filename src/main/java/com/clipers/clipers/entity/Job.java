@@ -33,7 +33,7 @@ public class Job {
     private Integer salaryMax;
 
     @org.springframework.data.mongodb.core.index.Indexed
-    private String companyId; // Referencia a la compañía
+    private String companyId; // Reference to company
 
     @org.springframework.data.mongodb.core.index.Indexed
     private Boolean isActive = true;
